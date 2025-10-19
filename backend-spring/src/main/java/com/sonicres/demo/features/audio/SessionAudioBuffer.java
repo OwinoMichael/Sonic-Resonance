@@ -10,10 +10,12 @@ public class SessionAudioBuffer {
     private final File tempFile;
     private final OutputStream outputStream;
 
-    public SessionAudioBuffer(WebSocketSession session, File tempFile, OutputStream outputStream) throws IOException {
+
+
+    public SessionAudioBuffer(WebSocketSession session) throws IOException {
         this.session = session;
         this.tempFile = File.createTempFile("audio-stream-" + session.getId() + "-", ".raw");
-        this.outputStream = new BufferedOutputStream(new FileOutputStream(tempFile));;
+        this.outputStream = new BufferedOutputStream(new FileOutputStream(tempFile)); // Write on Memory, when it gets large, flush to Disk
     }
 
     public synchronized void append(java.nio.ByteBuffer buffer) throws IOException {
@@ -32,8 +34,8 @@ public class SessionAudioBuffer {
 
     //finalize and provide file for processing
     public synchronized void closeForProcessing() throws IOException {
-        outputStream.flush();
-        outputStream.close();
+        outputStream.flush(); //writes memory on the buffer to the file on the disk
+        outputStream.close(); //flushes and releases file being handled. no more writting done
     }
 
     public void closeSilently() {

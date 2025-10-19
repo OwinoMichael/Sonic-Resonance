@@ -10,14 +10,13 @@ public class AudioProcessingTask implements Runnable {
 
     private final SessionAudioBuffer buffer;
     private final FingerprintService fingerprintService;
-    private final AudioDecoderService decoderService; // Optional: for Jave2 approach
+    // Optional: for Jave2 approach
 
     public AudioProcessingTask(SessionAudioBuffer buffer,
-                               FingerprintService fingerprintService,
-                               AudioDecoderService decoderService) {
+                               FingerprintService fingerprintService) {
         this.buffer = buffer;
         this.fingerprintService = fingerprintService;
-        this.decoderService = decoderService;
+
     }
 
     @Override
