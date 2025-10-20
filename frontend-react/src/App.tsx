@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import HomePage from './pages/homepage';
+import HomePage from './pages/HomePage';
 import ListeningPage from './pages/ListeningPage';
 import MatchesPage from './pages/MatchesPage';
 import NoMatchPage from './pages/NoMatchPage';

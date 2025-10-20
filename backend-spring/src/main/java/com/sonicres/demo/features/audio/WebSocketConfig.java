@@ -20,6 +20,7 @@ public class WebSocketConfig implements WebSocketConfigurer {
     public void registerWebSocketHandlers(WebSocketHandlerRegistry registry) {
         registry
                 .addHandler(audioSocketConnectionHandler, "/ws/audio")
-                .setAllowedOrigins("*"); // !!!!!! Not safe for prod !!!!!!
+                .setAllowedOrigins("*") // !!!!!! Not safe for prod !!!!!!
+                .addInterceptors(new WebSocketHandshakeInterceptor());  // Add interceptor
     }
 }

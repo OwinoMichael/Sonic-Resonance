@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Music2 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 
@@ -7,12 +7,27 @@ interface ListeningPageProps {
 }
 
 export default function ListeningPage({ navigate }: ListeningPageProps) {
+  const [timeRemaining, setTimeRemaining] = useState(10);
+  const [statusMessage, setStatusMessage] = useState('Listening to audio...');
+
+  useEffect(() => {
+    // This page is controlled by the AudioRecorderService callbacks
+    // We could add a listener for real-time updates if needed
+  }, []);
+
   return (
     <AppLayout currentRoute="/" navigate={navigate}>
       <main className="main-content">
         <div className="content-header">
-          <h2 className="main-title">Listening to Music</h2>
-          <p className="main-subtitle">Hold your device near the audio source</p>
+          <h2 className="main-title">{statusMessage}</h2>
+          <p className="main-subtitle">
+            Hold your device near the audio source
+          </p>
+          {timeRemaining > 0 && (
+            <p className="text-yellow-400 text-2xl font-bold mt-4">
+              {timeRemaining}s
+            </p>
+          )}
         </div>
 
         <div className="button-container">

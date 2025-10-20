@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { X } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 
@@ -6,10 +6,45 @@ interface MatchesPageProps {
   navigate: (path: string) => void;
 }
 
+interface Match {
+  trackId?: string;
+  title: string;
+  artist: string;
+  album?: string;
+  confidence: number;
+  duration?: string;
+  year?: number;
+  links?: {
+    youtube?: string;
+    spotify?: string;
+    apple?: string;
+    soundcloud?: string;
+  };
+}
+
 export default function MatchesPage({ navigate }: MatchesPageProps) {
-  const matchResults = [
+  const [matches, setMatches] = useState<Match[]>([]);
+
+  useEffect(() => {
+    // Load matches from sessionStorage
+    const storedMatches = sessionStorage.getItem('matchResults');
+    if (storedMatches) {
+      try {
+        const parsed = JSON.parse(storedMatches);
+        setMatches(parsed);
+      } catch (error) {
+        console.error('Error parsing match results:', error);
+        // Fallback to demo data
+        setMatches(getDemoMatches());
+      }
+    } else {
+      // Fallback to demo data
+      setMatches(getDemoMatches());
+    }
+  }, []);
+
+  const getDemoMatches = (): Match[] => [
     {
-      id: 1,
       title: "Blinding Lights",
       artist: "The Weeknd",
       album: "After Hours",
@@ -19,7 +54,6 @@ export default function MatchesPage({ navigate }: MatchesPageProps) {
       links: { youtube: "#", spotify: "#", apple: "#" }
     },
     {
-      id: 2,
       title: "Blinding Light (Cover)",
       artist: "The Weekend Tribute",
       album: "Covers",
