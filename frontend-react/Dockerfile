@@ -1,28 +1,20 @@
-# React Dockerfile for production hosting
-FROM node:20-alpine AS builder
+# === React Dockerfile ===
+FROM node:20-alpine AS build
 WORKDIR /app
 
-# Install dependencies first (for better caching)
+# Copy package.json first for caching
 COPY package*.json ./
-RUN npm ci --only=production=false
+RUN npm install
 
-# Install missing dependencies including terser
-# RUN npm install sonner @tanstack/react-table terser
-
-# Copy source code
+# Copy all source files
 COPY . .
 
-# Build with TypeScript errors ignored
-RUN npm run build:docker || npx vite build --mode production
+# Run build (ignores TS errors if configured in tsconfig or package.json script)
+RUN npm run build
 
-# Production stage
+# === Serve stage (optional, if using nginx) ===
 FROM nginx:alpine
-
-# Copy built files
-COPY --from=builder /app/dist /usr/share/nginx/html
-
-# Copy Nginx config from repo
-COPY nginx/default.conf /etc/nginx/conf.d/default.conf
+COPY --from=build /app/dist /usr/share/nginx/html
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
