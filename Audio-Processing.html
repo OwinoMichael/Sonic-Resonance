@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Audio Processing & FFmpeg Guide</title>
+    <style>
+        @page {
+            size: A4;
+            margin: 2cm;
+        }
+        
+        @media print {
+            body {
+                background: white !important;
+            }
+            .no-print {
+                display: none !important;
+            }
+            .page-break {
+                page-break-after: always;
+            }
+            a {
+                color: #2563eb !important;
+                text-decoration: underline !important;
+            }
+        }
+        
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+        
+        body {
+            font-family: 'Georgia', 'Times New Roman', serif;
+            line-height: 1.6;
+            color: #1a202c;
+            background: #f7fafc;
+            padding: 20px;
+        }
+        
+        .container {
+            max-width: 210mm;
+            margin: 0 auto;
+            background: white;
+            padding: 40px;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.1);
+        }
+        
+        .print-button {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 12px 24px;
+            background: #2563eb;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-size: 16px;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+            z-index: 1000;
+        }
+        
+        .print-button:hover {
+            background: #1d4ed8;
+        }
+        
+        h1 {
+            font-size: 32px;
+            color: #1a202c;
+            margin-bottom: 10px;
+            border-bottom: 3px solid #2563eb;
+            padding-bottom: 10px;
+        }
+        
+        h2 {
+            font-size: 24px;
+            color: #2d3748;
+            margin-top: 30px;
+            margin-bottom: 15px;
+            border-left: 4px solid #2563eb;
+            padding-left: 12px;
+        }
+        
+        h3 {
+            font-size: 18px;
+            color: #4a5568;
+            margin-top: 20px;
+            margin-bottom: 10px;
+        }
+        
+        .subtitle {
+            font-size: 14px;
+            color: #718096;
+            margin-bottom: 30px;
+            font-style: italic;
+        }
+        
+        p {
+            margin-bottom: 12px;
+            text-align: justify;
+        }
+        
+        .flow-diagram {
+            background: #edf2f7;
+            padding: 20px;
+            border-radius: 8px;
+            margin: 20px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            border: 2px solid #cbd5e0;
+        }
+        
+        .concept-box {
+            background: #f7fafc;
+            border-left: 4px solid #48bb78;
+            padding: 15px;
+            margin: 15px 0;
+            border-radius: 4px;
+        }
+        
+        .concept-box strong {
+            color: #2d3748;
+            font-size: 16px;
+        }
+        
+        .values-list {
+            background: #fff5f5;
+            border-left: 4px solid #f56565;
+            padding: 15px;
+            margin: 15px 0;
+        }
+        
+        .code-block {
+            background: #1a202c;
+            color: #68d391;
+            padding: 15px;
+            border-radius: 6px;
+            font-family: 'Courier New', monospace;
+            font-size: 13px;
+            overflow-x: auto;
+            margin: 15px 0;
+            white-space: pre-wrap;
+        }
+        
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 20px 0;
+            font-size: 14px;
+        }
+        
+        th {
+            background: #2563eb;
+            color: white;
+            padding: 12px;
+            text-align: left;
+            font-weight: 600;
+        }
+        
+        td {
+            padding: 10px 12px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+        
+        tr:nth-child(even) {
+            background: #f7fafc;
+        }
+        
+        .comparison-table {
+            margin: 20px 0;
+        }
+        
+        .highlight {
+            background: #fef3c7;
+            padding: 2px 6px;
+            border-radius: 3px;
+            font-weight: 600;
+        }
+        
+        .tip-box {
+            background: #dbeafe;
+            border-left: 4px solid #2563eb;
+            padding: 15px;
+            margin: 20px 0;
+            border-radius: 4px;
+        }
+        
+        .tip-box strong {
+            color: #1e40af;
+        }
+        
+        .formula {
+            background: #fef3c7;
+            padding: 15px;
+            border-radius: 6px;
+            margin: 15px 0;
+            font-family: 'Courier New', monospace;
+            text-align: center;
+            border: 2px dashed #f59e0b;
+        }
+        
+        ul, ol {
+            margin-left: 25px;
+            margin-bottom: 15px;
+        }
+        
+        li {
+            margin-bottom: 8px;
+        }
+        
+        .checkmark {
+            color: #48bb78;
+            font-weight: bold;
+        }
+        
+        .xmark {
+            color: #f56565;
+            font-weight: bold;
+        }
+        
+        .header-info {
+            text-align: right;
+            color: #718096;
+            font-size: 12px;
+            margin-bottom: 20px;
+        }
+        
+        .footer {
+            margin-top: 40px;
+            padding-top: 20px;
+            border-top: 2px solid #e2e8f0;
+            text-align: center;
+            color: #718096;
+            font-size: 12px;
+        }
+    </style>
+</head>
+<body>
+    <button class="print-button no-print" onclick="window.print()">🖨️ Print / Save as PDF</button>
+    
+    <div class="container">
+        <div class="header-info">
+            Audio Processing Reference Guide | Version 1.0
+        </div>
+        
+        <h1>🎵 Audio Processing & FFmpeg Parameters Guide</h1>
+        <p class="subtitle">A comprehensive guide to understanding audio decoding, WAV format, and FFmpeg configuration for audio fingerprinting applications</p>
+        
+        <h2>1. The Processing Flow</h2>
+        
+        <div class="flow-diagram">
+Browser (WebRTC Recording)<br>
+↓<br>
+WebM/Opus Container (Compressed)<br>
+↓<br>
+Spring Boot Buffer (SessionAudioBuffer)<br>
+↓<br>
+FFmpeg Decoder<br>
+↓<br>
+WAV File (Uncompressed PCM)<br>
+↓<br>
+Fingerprinting Service<br>
+↓<br>
+Match Result
+        </div>
+        
+        <div class="tip-box">
+            <strong>💡 Why this flow?</strong><br>
+            • Browser records as WebM/Opus (compressed, efficient for transmission)<br>
+            • FFmpeg decodes to WAV (raw audio samples, easy to analyze)<br>
+            • Fingerprinting algorithms require uncompressed PCM data to analyze acoustic patterns
+        </div>
+        
+        <h2>2. Core Audio Concepts</h2>
+        
+        <h3>2.1 Sample Rate (Frequency)</h3>
+        
+        <div class="concept-box">
+            <strong>Definition:</strong> The number of audio samples captured per second, measured in Hertz (Hz)<br><br>
+            <strong>Analogy:</strong> Like frames per second (FPS) in video—higher sample rates capture more detail and produce smoother, more accurate audio reproduction
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Sample Rate</th>
+                    <th>Quality Level</th>
+                    <th>Common Use</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>8,000 Hz</td>
+                    <td>Very Low</td>
+                    <td>Telephone systems</td>
+                </tr>
+                <tr>
+                    <td>16,000 Hz</td>
+                    <td>Low</td>
+                    <td>Voice calls, speech recognition</td>
+                </tr>
+                <tr>
+                    <td>22,050 Hz</td>
+                    <td>Medium</td>
+                    <td>Web audio, podcasts</td>
+                </tr>
+                <tr>
+                    <td class="highlight">44,100 Hz</td>
+                    <td class="highlight">Standard (CD Quality)</td>
+                    <td class="highlight">Music, fingerprinting, consumer audio</td>
+                </tr>
+                <tr>
+                    <td>48,000 Hz</td>
+                    <td>Professional</td>
+                    <td>Video production, broadcasting</td>
+                </tr>
+                <tr>
+                    <td>96,000 Hz</td>
+                    <td>Studio</td>
+                    <td>High-resolution recording</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="tip-box">
+            <strong>Why 44,100 Hz?</strong><br>
+            Based on the Nyquist-Shannon sampling theorem: to accurately capture audio, you need a sample rate at least twice the highest frequency you want to record. Human hearing ranges from 20 Hz to 20,000 Hz, so 44,100 Hz (which captures up to ~22,050 Hz) is perfect for music.
+        </div>
+        
+        <div class="page-break"></div>
+        
+        <h3>2.2 Audio Channels</h3>
+        
+        <div class="concept-box">
+            <strong>Definition:</strong> The number of independent audio signals (streams) in an audio file<br><br>
+            <strong>Analogy:</strong> Like camera angles—mono is a single viewpoint, stereo is left and right perspectives
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Channels</th>
+                    <th>Name</th>
+                    <th>Description</th>
+                    <th>File Size</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="highlight">
+                    <td class="highlight">1</td>
+                    <td class="highlight">Mono</td>
+                    <td class="highlight">Single channel, center audio</td>
+                    <td class="highlight">Baseline (100%)</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>Stereo</td>
+                    <td>Left and right channels</td>
+                    <td>2× larger</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>5.1 Surround</td>
+                    <td>Front L/R, Center, Rear L/R, Subwoofer</td>
+                    <td>6× larger</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="tip-box">
+            <strong>For Fingerprinting: Use Mono (-ac 1)</strong><br>
+            <span class="checkmark">✓</span> Reduces file size by 50% compared to stereo<br>
+            <span class="checkmark">✓</span> Faster processing time<br>
+            <span class="checkmark">✓</span> Most fingerprinting algorithms convert to mono internally anyway<br>
+            <span class="checkmark">✓</span> Spatial information (stereo separation) is not needed for acoustic matching
+        </div>
+        
+        <h3>2.3 Bit Depth (Sample Resolution)</h3>
+        
+        <div class="concept-box">
+            <strong>Definition:</strong> The number of bits used to represent each audio sample, determining the precision and dynamic range<br><br>
+            <strong>Analogy:</strong> Like color depth in images—8-bit has 256 colors, 16-bit has 65,536 shades of color
+        </div>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Bit Depth</th>
+                    <th>Possible Values</th>
+                    <th>Dynamic Range</th>
+                    <th>Use Case</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>8-bit</td>
+                    <td>256 levels</td>
+                    <td>48 dB</td>
+                    <td>Low quality, retro games</td>
+                </tr>
+                <tr class="highlight">
+                    <td class="highlight">16-bit</td>
+                    <td class="highlight">65,536 levels</td>
+                    <td class="highlight">96 dB</td>
+                    <td class="highlight">CD quality, standard audio</td>
+                </tr>
+                <tr>
+                    <td>24-bit</td>
+                    <td>16.7 million levels</td>
+                    <td>144 dB</td>
+                    <td>Professional recording</td>
+                </tr>
+                <tr>
+                    <td>32-bit float</td>
+                    <td>4.3 billion levels</td>
+                    <td>1,680 dB</td>
+                    <td>Studio mastering, editing</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="tip-box">
+            <strong>For Fingerprinting: Use 16-bit (pcm_s16le)</strong><br>
+            • Perfect balance of quality and file size<br>
+            • Industry standard for music distribution<br>
+            • More than sufficient dynamic range for analysis<br>
+            • Supported by all audio processing libraries
+        </div>
+        
+        <div class="page-break"></div>
+        
+        <h2>3. Understanding pcm_s16le</h2>
+        
+        <div class="concept-box">
+            <strong>Breaking down the codec name: pcm_s16le</strong><br><br>
+            <strong>PCM</strong> = Pulse Code Modulation (uncompressed digital audio)<br>
+            <strong>s16</strong> = Signed 16-bit (values from -32,768 to +32,767)<br>
+            <strong>le</strong> = Little Endian (byte order used by most computers)
+        </div>
+        
+        <p><strong>Why "signed"?</strong> Audio waveforms oscillate above and below zero (positive and negative pressure), so we need both positive and negative numbers to represent them accurately.</p>
+        
+        <p><strong>What is Little Endian?</strong> It's the order in which bytes are stored in memory. Modern Intel/AMD processors use little endian, making this the standard choice for PC-based systems.</p>
+        
+        <h2>4. Bit Rate Calculation</h2>
+        
+        <div class="formula">
+            <strong>Bit Rate Formula:</strong><br><br>
+            Bit Rate (bits/second) = Sample Rate × Bit Depth × Channels<br><br>
+            <strong>Example (Your Configuration):</strong><br>
+            = 44,100 samples/sec × 16 bits × 1 channel<br>
+            = 705,600 bits/second<br>
+            = 705.6 kbps<br>
+            = 86.4 KB/second
+        </div>
+        
+        <h3>File Size Calculation</h3>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Duration</th>
+                    <th>File Size (44.1kHz, 16-bit, Mono)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>10 seconds</td>
+                    <td>~864 KB</td>
+                </tr>
+                <tr>
+                    <td>30 seconds</td>
+                    <td>~2.5 MB</td>
+                </tr>
+                <tr>
+                    <td>1 minute</td>
+                    <td>~5.2 MB</td>
+                </tr>
+                <tr>
+                    <td>3 minutes</td>
+                    <td>~15.6 MB</td>
+                </tr>
+                <tr>
+                    <td>5 minutes</td>
+                    <td>~26 MB</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="page-break"></div>
+        
+        <h2>5. WAV File Format</h2>
+        
+        <h3>What is WAV?</h3>
+        <p><strong>WAV</strong> (Waveform Audio File Format) is a Microsoft/IBM audio file format standard for storing an audio bitstream on PCs. It is the main format used on Windows systems for raw and typically uncompressed audio.</p>
+        
+        <h3>WAV File Structure</h3>
+        
+        <div class="flow-diagram">
+┌─────────────────────────────────────┐<br>
+│         RIFF Header                 │<br>
+│  (File identifier and size)         │<br>
+├─────────────────────────────────────┤<br>
+│         fmt Chunk                   │<br>
+│  • Sample rate: 44100 Hz            │<br>
+│  • Channels: 1 (mono)               │<br>
+│  • Bit depth: 16-bit                │<br>
+│  • Codec: PCM                       │<br>
+├─────────────────────────────────────┤<br>
+│         data Chunk                  │<br>
+│  [Raw PCM samples]                  │<br>
+│  Sample 1: -5432                    │<br>
+│  Sample 2: -3211                    │<br>
+│  Sample 3: 1024                     │<br>
+│  ...                                │<br>
+└─────────────────────────────────────┘
+        </div>
+        
+        <h3>Why WAV for Fingerprinting?</h3>
+        
+        <div class="values-list">
+            <strong><span class="checkmark">✓</span> No Compression Artifacts:</strong> Pure, unaltered audio samples<br>
+            <strong><span class="checkmark">✓</span> Direct Sample Access:</strong> Easy to read sequential samples for analysis<br>
+            <strong><span class="checkmark">✓</span> Universal Support:</strong> Every audio processing library understands WAV<br>
+            <strong><span class="checkmark">✓</span> Fast Decoding:</strong> Already uncompressed, no decode overhead<br>
+            <strong><span class="checkmark">✓</span> Predictable Format:</strong> Simple structure makes parsing reliable
+        </div>
+        
+        <h3>Opus vs WAV Comparison</h3>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Aspect</th>
+                    <th>Opus (Input)</th>
+                    <th>WAV (Output)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Compression</strong></td>
+                    <td>Lossy (psychoacoustic model)</td>
+                    <td>Uncompressed (lossless)</td>
+                </tr>
+                <tr>
+                    <td><strong>File Size (1 min)</strong></td>
+                    <td>~1.5 MB</td>
+                    <td>~5.2 MB</td>
+                </tr>
+                <tr>
+                    <td><strong>Data Rate</strong></td>
+                    <td>~20-50 KB/sec (variable)</td>
+                    <td>86.4 KB/sec (constant)</td>
+                </tr>
+                <tr>
+                    <td><strong>Processing Speed</strong></td>
+                    <td>Requires decoding</td>
+                    <td>Direct access to samples</td>
+                </tr>
+                <tr>
+                    <td><strong>Use Case</strong></td>
+                    <td>Streaming, storage, transmission</td>
+                    <td>Analysis, processing, editing</td>
+                </tr>
+                <tr>
+                    <td><strong>Quality Loss</strong></td>
+                    <td>Yes (imperceptible at high bitrates)</td>
+                    <td>No</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <div class="page-break"></div>
+        
+        <h2>6. FFmpeg Command Breakdown</h2>
+        
+        <h3>Your Current Command</h3>
+        
+        <div class="code-block">ffmpeg -y -i input.webm -ac 1 -ar 44100 -acodec pcm_s16le -f wav output.wav</div>
+        
+        <h3>Parameter Explanation</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Parameter</th>
+                    <th>Full Name</th>
+                    <th>Purpose</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>-y</strong></td>
+                    <td>Yes/Overwrite</td>
+                    <td>Automatically overwrite output file if it exists (no prompt)</td>
+                </tr>
+                <tr>
+                    <td><strong>-i input.webm</strong></td>
+                    <td>Input file</td>
+                    <td>Specifies the source file containing Opus-encoded audio</td>
+                </tr>
+                <tr>
+                    <td><strong>-ac 1</strong></td>
+                    <td>Audio Channels</td>
+                    <td>Convert to mono (1 channel) for efficient processing</td>
+                </tr>
+                <tr>
+                    <td><strong>-ar 44100</strong></td>
+                    <td>Audio Rate</td>
+                    <td>Set sample rate to 44,100 Hz (CD quality)</td>
+                </tr>
+                <tr>
+                    <td><strong>-acodec pcm_s16le</strong></td>
+                    <td>Audio Codec</td>
+                    <td>Encode as 16-bit signed PCM, little-endian</td>
+                </tr>
+                <tr>
+                    <td><strong>-f wav</strong></td>
+                    <td>Format</td>
+                    <td>Force output format to WAV container</td>
+                </tr>
+                <tr>
+                    <td><strong>output.wav</strong></td>
+                    <td>Output file</td>
+                    <td>Destination file path</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h3>The Conversion Process (Step-by-Step)</h3>
+        
+        <ol>
+            <li><strong>Read Container:</strong> FFmpeg opens the WebM container and identifies the Opus audio stream</li>
+            <li><strong>Decode Opus:</strong> Decompresses Opus-encoded audio to raw PCM samples</li>
+            <li><strong>Downmix Channels:</strong> If input is stereo, combines to mono using -ac 1</li>
+            <li><strong>Resample:</strong> Converts sample rate to 44,100 Hz if different</li>
+            <li><strong>Format Conversion:</strong> Ensures data is in signed 16-bit little-endian format</li>
+            <li><strong>Create WAV:</strong> Wraps PCM data in WAV container with proper headers</li>
+            <li><strong>Write File:</strong> Saves the complete WAV file to disk</li>
+        </ol>
+        
+        <div class="page-break"></div>
+        
+        <h2>7. Optimal Settings for Different Use Cases</h2>
+        
+        <h3>Music Fingerprinting (Recommended - Your Use Case)</h3>
+        <div class="code-block">ffmpeg -y -i input.webm -ac 1 -ar 44100 -acodec pcm_s16le -f wav output.wav</div>
+        <p><strong>Quality:</strong> ★★★★★ | <strong>File Size:</strong> 5.2 MB/min | <strong>Processing:</strong> Medium</p>
+        <p><strong>Best for:</strong> Music recognition, acoustic fingerprinting, song identification</p>
+        
+        <h3>Voice/Speech Recognition</h3>
+        <div class="code-block">ffmpeg -y -i input.webm -ac 1 -ar 16000 -acodec pcm_s16le -f wav output.wav</div>
+        <p><strong>Quality:</strong> ★★★☆☆ | <strong>File Size:</strong> 1.9 MB/min | <strong>Processing:</strong> Fast</p>
+        <p><strong>Best for:</strong> Speech-to-text, voice commands, telephone quality audio</p>
+        
+        <h3>Maximum Quality (Overkill)</h3>
+        <div class="code-block">ffmpeg -y -i input.webm -ac 2 -ar 48000 -acodec pcm_s24le -f wav output.wav</div>
+        <p><strong>Quality:</strong> ★★★★★★ | <strong>File Size:</strong> 16.9 MB/min | <strong>Processing:</strong> Slow</p>
+        <p><strong>Best for:</strong> Archival, professional audio analysis, research</p>
+        
+        <h3>Minimum Viable (Fast & Small)</h3>
+        <div class="code-block">ffmpeg -y -i input.webm -ac 1 -ar 22050 -acodec pcm_s16le -f wav output.wav</div>
+        <p><strong>Quality:</strong> ★★★☆☆ | <strong>File Size:</strong> 2.6 MB/min | <strong>Processing:</strong> Very Fast</p>
+        <p><strong>Best for:</strong> Quick prototypes, low-resource environments, testing</p>
+        
+        <h2>8. Common Questions & Answers</h2>
+        
+        <div class="tip-box">
+            <strong>Q: Why not fingerprint Opus directly?</strong><br>
+            A: Fingerprinting algorithms analyze raw amplitude values over time to create acoustic signatures. Opus is compressed using psychoacoustic models that discard "inaudible" information, making direct analysis complex and unreliable. WAV provides direct access to sample data.
+        </div>
+        
+        <div class="tip-box">
+            <strong>Q: Can I use lower quality settings to save space?</strong><br>
+            A: Yes, but with trade-offs:<br>
+            • <strong>Lower sample rate (22050 Hz):</strong> Works for speech, may miss high-frequency content in music<br>
+            • <strong>8-bit audio:</strong> Noticeable quality degradation, not recommended<br>
+            • <strong>Consider:</strong> Processing speed vs. accuracy for your use case
+        </div>
+        
+        <div class="tip-box">
+            <strong>Q: What's the minimum quality for reliable fingerprinting?</strong><br>
+            A: Minimum recommended specifications:<br>
+            • Sample Rate: 11,025 Hz absolute minimum, 44,100 Hz recommended<br>
+            • Bit Depth: 16-bit minimum<br>
+            • Channels: Mono acceptable (stereo unnecessary)<br>
+            • Format: Uncompressed PCM (WAV, AIFF, or raw PCM)
+        </div>
+        
+        <div class="tip-box">
+            <strong>Q: Why do WAV files grow so large?</strong><br>
+            A: You're converting from compressed to uncompressed format. Think of it like unzipping a ZIP file—the original data is restored to its full size. For 44.1kHz/16-bit/mono, you need 86.4 KB of storage for every second of audio.
+        </div>
+        
+        <div class="page-break"></div>
+        
+        <h2>9. Implementation Best Practices</h2>
+        
+        <h3>Resource Management</h3>
+        <ul>
+            <li><strong>Delete temporary files immediately:</strong> WAV files are large; clean up after processing</li>
+            <li><strong>Use streaming when possible:</strong> Process audio in chunks for large files</li>
+            <li><strong>Monitor disk space:</strong> Ensure adequate temporary storage (100MB+ buffer recommended)</li>
+            <li><strong>Set timeouts:</strong> FFmpeg processes can hang on corrupted files</li>
+        </ul>
+        
+        <h3>Error Handling</h3>
+        <ul>
+            <li><strong>Check exit codes:</strong> FFmpeg returns 0 on success, non-zero on failure</li>
+            <li><strong>Verify output:</strong> Confirm WAV file exists and has non-zero size</li>
+            <li><strong>Handle corrupted input:</strong> Catch and gracefully handle decoding failures</li>
+            <li><strong>Log FFmpeg output:</strong> Capture stderr for debugging purposes</li>
+        </ul>
+        
+        <h3>Performance Optimization</h3>
+        <ul>
+            <li><strong>Process asynchronously:</strong> Use thread pools for concurrent processing</li>
+            <li><strong>Limit queue size:</strong> Prevent memory exhaustion under heavy load</li>
+            <li><strong>Consider sample rate:</strong> Lower rates (22050 Hz) can halve processing time</li>
+            <li><strong>Batch processing:</strong> Group small files together when possible</li>
+        </ul>
+        
+        <h2>10. Quick Reference Table</h2>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Setting</th>
+                    <th>Recommended Value</th>
+                    <th>Rationale</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr class="highlight">
+                    <td>Sample Rate</td>
+                    <td class="highlight">44,100 Hz</td>
+                    <td class="highlight">CD quality, captures full frequency range</td>
+                </tr>
+                <tr class="highlight">
+                    <td>Channels</td>
+                    <td class="highlight">1 (Mono)</td>
+                    <td class="highlight">Reduces size, sufficient for fingerprinting</td>
+                </tr>
+                <tr class="highlight">
+                    <td>Bit Depth</td>
+                    <td class="highlight">16-bit</td>
+                    <td class="highlight">Industry standard, excellent dynamic range</td>
+                </tr>
+                <tr class="highlight">
+                    <td>Codec</td>
+                    <td class="highlight">pcm_s16le</td>
+                    <td class="highlight">Uncompressed PCM, universal compatibility</td>
+                </tr>
+                <tr class="highlight">
+                    <td>Format</td>
+                    <td class="highlight">WAV</td>
+                    <td class="highlight">Simple structure, easy to process</td>
+                </tr>
+                <tr>
+                    <td>Bit Rate</td>
+                    <td>705.6 kbps</td>
+                    <td>Calculated automatically from above settings</td>
+                </tr>
+                <tr>
+                    <td>File Size</td>
+                    <td>~5.2 MB/minute</td>
+                    <td>Expected size for mono 44.1kHz 16-bit audio</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>11. Docker Deployment Checklist</h2>
+        
+        <div class="concept-box">
+            <strong>Essential Requirements:</strong><br><br>
+            <span class="checkmark">✓</span> Install FFmpeg in Docker container (apt-get install ffmpeg)<br>
+            <span class="checkmark">✓</span> Verify FFmpeg with: docker exec container ffmpeg -version<br>
+            <span class="checkmark">✓</span> Ensure adequate temp storage (/tmp directory)<br>
+            <span class="checkmark">✓</span> Set appropriate file permissions for temp files<br>
+            <span class="checkmark">✓</span> Configure resource limits (memory, CPU) in docker-compose<br>
+            <span class="checkmark">✓</span> Implement cleanup for orphaned temp files on restart
+        </div>
+        
+        <h3>Dockerfile Example</h3>
+        
+        <div class="code-block">FROM eclipse-temurin:17-jre-jammy
+
+# Install FFmpeg
+RUN apt-get update && \
+    apt-get install -y ffmpeg && \
+    rm -rf /var/lib/apt/lists/*
+
+# Verify installation
+RUN ffmpeg -version
+
+WORKDIR /app
+COPY target/*.jar app.jar
+
+# Create temp directory
+RUN mkdir -p /tmp/audio && chmod 777 /tmp/audio
+
+EXPOSE 8080
+ENTRYPOINT ["java", "-jar", "app.jar"]</div>
+        
+        <div class="page-break"></div>
+        
+        <h2>12. Troubleshooting Guide</h2>
+        
+        <h3>Problem: "Cannot run program 'ffmpeg': No such file or directory"</h3>
+        <div class="values-list">
+            <strong>Cause:</strong> FFmpeg not installed or not in system PATH<br><br>
+            <strong>Solutions:</strong><br>
+            1. Install FFmpeg: sudo apt install ffmpeg<br>
+            2. Use full path: /usr/bin/ffmpeg instead of ffmpeg<br>
+            3. Verify with: which ffmpeg or ffmpeg -version<br>
+            4. In Docker: Add RUN apt-get install -y ffmpeg to Dockerfile
+        </div>
+        
+        <h3>Problem: "FFmpeg conversion failed, exit code non-zero"</h3>
+        <div class="values-list">
+            <strong>Causes:</strong> Corrupted input file, unsupported codec, insufficient permissions<br><br>
+            <strong>Solutions:</strong><br>
+            1. Check input file validity<br>
+            2. Capture and log FFmpeg stderr output for details<br>
+            3. Verify temp directory write permissions<br>
+            4. Test command manually: ffmpeg -i input.webm output.wav
+        </div>
+        
+        <h3>Problem: "Output file is empty or very small"</h3>
+        <div class="values-list">
+            <strong>Causes:</strong> Input file has no audio, wrong stream selected, format mismatch<br><br>
+            <strong>Solutions:</strong><br>
+            1. Check input file duration and streams: ffmpeg -i input.webm<br>
+            2. Verify input file size is reasonable<br>
+            3. Ensure input contains audio (not just video)<br>
+            4. Add -vn flag to explicitly ignore video streams
+        </div>
+        
+        <h3>Problem: "Process takes too long or hangs"</h3>
+        <div class="values-list">
+            <strong>Causes:</strong> Large files, high sample rates, system resource constraints<br><br>
+            <strong>Solutions:</strong><br>
+            1. Implement timeout on Process.waitFor()<br>
+            2. Consider lower sample rate (22050 Hz) for faster processing<br>
+            3. Add progress monitoring using FFmpeg's -progress flag<br>
+            4. Check system CPU and memory availability
+        </div>
+        
+        <h3>Problem: "Disk space issues with temp files"</h3>
+        <div class="values-list">
+            <strong>Causes:</strong> Temp files not being cleaned up, high processing volume<br><br>
+            <strong>Solutions:</strong><br>
+            1. Always delete temp files in finally blocks<br>
+            2. Use Files.deleteIfExists() to handle missing files gracefully<br>
+            3. Monitor /tmp directory size<br>
+            4. Implement maximum queue size to prevent overwhelming system<br>
+            5. Consider streaming processing for very large files
+        </div>
+        
+        <div class="page-break"></div>
+        
+        <h2>13. Audio Format Comparison</h2>
+        
+        <table class="comparison-table">
+            <thead>
+                <tr>
+                    <th>Format</th>
+                    <th>Type</th>
+                    <th>Size (1 min)</th>
+                    <th>Quality</th>
+                    <th>Use Case</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td><strong>Opus</strong></td>
+                    <td>Lossy Compressed</td>
+                    <td>~1.5 MB</td>
+                    <td>High</td>
+                    <td>Streaming, VoIP, recording</td>
+                </tr>
+                <tr class="highlight">
+                    <td><strong>WAV (PCM)</strong></td>
+                    <td class="highlight">Uncompressed</td>
+                    <td class="highlight">~5.2 MB</td>
+                    <td class="highlight">Perfect</td>
+                    <td class="highlight">Processing, analysis, editing</td>
+                </tr>
+                <tr>
+                    <td><strong>MP3</strong></td>
+                    <td>Lossy Compressed</td>
+                    <td>~1 MB</td>
+                    <td>Good</td>
+                    <td>Distribution, playback</td>
+                </tr>
+                <tr>
+                    <td><strong>FLAC</strong></td>
+                    <td>Lossless Compressed</td>
+                    <td>~3 MB</td>
+                    <td>Perfect</td>
+                    <td>Archival, audiophile</td>
+                </tr>
+                <tr>
+                    <td><strong>AAC</strong></td>
+                    <td>Lossy Compressed</td>
+                    <td>~0.9 MB</td>
+                    <td>High</td>
+                    <td>Mobile, streaming</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <h2>14. Performance Metrics</h2>
+        
+        <h3>Expected Processing Times (approximate)</h3>
+        
+        <table>
+            <thead>
+                <tr>
+                    <th>Audio Duration</th>
+                    <th>Processing Time</th>
+                    <th>CPU Usage</th>
+                    <th>Memory Usage</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>10 seconds</td>
+                    <td>0.5 - 1 second</td>
+                    <td>Low-Medium</td>
+                    <td>~50 MB</td>
+                </tr>
+                <tr>
+                    <td>30 seconds</td>
+                    <td>1 - 2 seconds</td>
+                    <td>Medium</td>
+                    <td>~75 MB</td>
+                </tr>
+                <tr>
+                    <td>1 minute</td>
+                    <td>2 - 4 seconds</td>
+                    <td>Medium</td>
+                    <td>~100 MB</td>
+                </tr>
+                <tr>
+                    <td>3 minutes</td>
+                    <td>6 - 12 seconds</td>
+                    <td>Medium-High</td>
+                    <td>~200 MB</td>
+                </tr>
+                <tr>
+                    <td>5 minutes</td>
+                    <td>10 - 20 seconds</td>
+                    <td>High</td>
+                    <td>~300 MB</td>
+                </tr>
+            </tbody>
+        </table>
+        
+        <p><em>Note: Times vary based on system specifications, CPU speed, and concurrent load</em></p>
+        
+        <h2>15. Summary & Key Takeaways</h2>
+        
+        <div class="concept-box">
+            <strong>Your Current Configuration is Optimal:</strong><br><br>
+            The settings you're using (44.1kHz, mono, 16-bit PCM WAV) represent the industry standard for audio fingerprinting and music analysis. This configuration provides:<br><br>
+            <span class="checkmark">✓</span> Full frequency range capture (20 Hz - 22 kHz)<br>
+            <span class="checkmark">✓</span> Excellent dynamic range (96 dB)<br>
+            <span class="checkmark">✓</span> Reasonable file sizes (~5 MB per minute)<br>
+            <span class="checkmark">✓</span> Fast processing times<br>
+            <span class="checkmark">✓</span> Universal compatibility with fingerprinting algorithms
+        </div>
+        
+        <h3>Critical Points to Remember</h3>
+        
+        <ol>
+            <li><strong>Sample Rate (44,100 Hz)</strong> determines how often audio is measured—higher rates capture more detail</li>
+            <li><strong>Channels (Mono = 1)</strong> reduces file size by 50% without impacting fingerprint accuracy</li>
+            <li><strong>Bit Depth (16-bit)</strong> provides 65,536 levels of precision—perfect for music analysis</li>
+            <li><strong>WAV format</strong> stores uncompressed PCM data, making it ideal for acoustic analysis</li>
+            <li><strong>FFmpeg</strong> acts as the bridge between compressed browser recordings and analysis-ready audio</li>
+            <li><strong>Docker deployment</strong> requires FFmpeg installation in the container, not on the host</li>
+            <li><strong>Cleanup is essential</strong>—always delete temporary files to prevent disk space issues</li>
+        </ol>
+        
+        <h3>When to Consider Different Settings</h3>
+        
+        <ul>
+            <li><strong>Use 16 kHz sample rate</strong> if processing only speech/voice (not music)</li>
+            <li><strong>Use 22.05 kHz</strong> if you need faster processing and can accept slightly reduced quality</li>
+            <li><strong>Keep stereo (2 channels)</strong> only if your algorithm specifically requires spatial information</li>
+            <li><strong>Use 24-bit</strong> only for archival or research purposes—overkill for fingerprinting</li>
+        </ul>
+        
+        <div class="page-break"></div>
+        
+        <h2>16. Additional Resources</h2>
+        
+        <h3>FFmpeg Documentation</h3>
+        <ul>
+            <li>Official Documentation: https://ffmpeg.org/documentation.html</li>
+            <li>Audio Filters Guide: https://ffmpeg.org/ffmpeg-filters.html#Audio-Filters</li>
+            <li>Format Reference: https://ffmpeg.org/ffmpeg-formats.html</li>
+        </ul>
+        
+        <h3>Audio Processing Concepts</h3>
+        <ul>
+            <li>Nyquist-Shannon Sampling Theorem: Foundation of digital audio</li>
+            <li>PCM (Pulse Code Modulation): Standard digital audio representation</li>
+            <li>Bit Depth & Dynamic Range: Understanding audio precision</li>
+            <li>Sample Rate Theory: Why 44.1 kHz became the standard</li>
+        </ul>
+        
+        <h3>Related Technologies</h3>
+        <ul>
+            <li><strong>Chromaprint/AcoustID:</strong> Open-source audio fingerprinting</li>
+            <li><strong>Shazam Algorithm:</strong> Commercial music recognition</li>
+            <li><strong>Echoprint:</strong> Open-source music identification</li>
+            <li><strong>WebRTC:</strong> Browser-based real-time audio capture</li>
+        </ul>
+        
+        <div class="footer">
+            <p><strong>Audio Processing & FFmpeg Guide</strong> | Version 1.0</p>
+            <p>For audio fingerprinting applications using Spring Boot and FFmpeg</p>
+            <p>© 2025 | This document may be freely distributed for educational purposes</p>
+        </div>
+    </div>
+    
+    <script>
+        // Add print timestamp
+        window.addEventListener('load', function() {
+            const footer = document.querySelector('.footer');
+            const now = new Date();
+            const timestamp = now.toLocaleString('en-US', { 
+                year: 'numeric', 
+                month: 'long', 
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+            footer.innerHTML += `<p style="margin-top: 10px; font-size: 10px;">Generated: ${timestamp}</p>`;
+        });
+    </script>
+</body>
+</html>

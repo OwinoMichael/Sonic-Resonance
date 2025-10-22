@@ -1,35 +1,60 @@
-import { useState } from 'react'
-import reactLogo from './assets/react.svg'
-import viteLogo from '/vite.svg'
-import './App.css'
+import React, { useState, useEffect } from 'react';
+import HomePage from './pages/HomePage';
+import ListeningPage from './pages/ListeningPage';
+import MatchesPage from './pages/MatchesPage';
+import NoMatchPage from './pages/NoMatchPage';
+import LibraryPage from './pages/LibraryPage';
+
+const BASE_PATH = '/sonicres';
 
 function App() {
-  const [count, setCount] = useState(0)
+  const [currentRoute, setCurrentRoute] = useState('/');
 
-  return (
-    <>
-      <div>
-        <a href="https://vite.dev" target="_blank">
-          <img src={viteLogo} className="logo" alt="Vite logo" />
-        </a>
-        <a href="https://react.dev" target="_blank">
-          <img src={reactLogo} className="logo react" alt="React logo" />
-        </a>
-      </div>
-      <h1>Vite + React</h1>
-      <div className="card">
-        <button onClick={() => setCount((count) => count + 1)}>
-          count is {count}
-        </button>
-        <p>
-          Edit <code>src/App.tsx</code> and save to test HMR
-        </p>
-      </div>
-      <p className="read-the-docs">
-        Click on the Vite and React logos to learn more
-      </p>
-    </>
-  )
+  const navigate = (path: string) => {
+    const fullPath = BASE_PATH + path;
+    setCurrentRoute(path);
+    window.history.pushState({}, '', fullPath);
+  };
+
+  useEffect(() => {
+    // Get initial route from pathname, removing base path
+    const pathname = window.location.pathname;
+    const route = pathname.startsWith(BASE_PATH) 
+      ? pathname.slice(BASE_PATH.length) || '/'
+      : '/';
+    setCurrentRoute(route);
+
+    const handlePopState = () => {
+      const pathname = window.location.pathname;
+      const route = pathname.startsWith(BASE_PATH) 
+        ? pathname.slice(BASE_PATH.length) || '/'
+        : '/';
+      setCurrentRoute(route);
+    };
+    
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  // Router logic
+  const renderPage = () => {
+    switch (currentRoute) {
+      case '/':
+        return <HomePage navigate={navigate} />;
+      case '/listening':
+        return <ListeningPage navigate={navigate} />;
+      case '/matches':
+        return <MatchesPage navigate={navigate} />;
+      case '/no-match':
+        return <NoMatchPage navigate={navigate} />;
+      case '/library':
+        return <LibraryPage navigate={navigate} />;
+      default:
+        return <HomePage navigate={navigate} />;
+    }
+  };
+
+  return <>{renderPage()}</>;
 }
 
-export default App
+export default App;
