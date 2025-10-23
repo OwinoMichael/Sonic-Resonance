@@ -1,60 +1,55 @@
-name: Deploy Sonic-Resonance with Independent Builds
+name: CI/CD Sonic-Resonance
 
 on:
   push:
     branches:
       - main
-  workflow_dispatch:
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    env:
+      DROPLET_HOST: ${{ secrets.HOST }}
+      DROPLET_USER: ${{ secrets.USERNAME }}
+      SSH_KEY: ${{ secrets.SSH_KEY }}
 
     steps:
-      - name: Checkout code
+      - name: Checkout repo
         uses: actions/checkout@v3
 
-      - name: Set up SSH key
+      - name: Set up SSH
         run: |
           mkdir -p ~/.ssh
-          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          echo "${SSH_KEY}" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $DROPLET_HOST >> ~/.ssh/known_hosts
 
-      - name: Test SSH connection
-        run: ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST }} "echo SSH OK"
-
-      - name: Deploy on droplet
+      - name: Deploy to droplet
         run: |
-          ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST }} << 'EOF'
-            set -e
+          ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST << 'EOF'
+            echo "Connected to droplet"
 
-            # Navigate to project
+            # === Step 1: Update code ===
             cd /opt/sonicres/Sonic-Resonance
-
-            # Update code without touching .env
             git fetch --all
             git reset --hard origin/main
-            echo "Source updated"
 
-            # Enable swap if less than 1GB free memory
-            MEM_FREE=$(free -m | awk '/^Mem:/{print $7}')
-            if [ "$MEM_FREE" -lt 1024 ]; then
-              echo "Low memory detected: $MEM_FREE MB, adding 1G swap"
-              sudo fallocate -l 1G /swapfile
+            # === Step 2: Check memory and swap ===
+            MEM_FREE=$(free -m | awk '/^Mem:/ {print $7}') # available memory in MB
+            SWAP_TOTAL=$(swapon --show --noheadings | awk '{sum+=$3} END {print sum}')
+            echo "Memory available: $MEM_FREE MB, Swap total: ${SWAP_TOTAL:-0} MB"
+
+            if [ "$MEM_FREE" -lt 200 ] && [ -z "$SWAP_TOTAL" ]; then
+              echo "Low memory detected. Adding 1G swap..."
+              sudo dd if=/dev/zero of=/swapfile bs=1M count=1024
               sudo chmod 600 /swapfile
               sudo mkswap /swapfile
               sudo swapon /swapfile
             fi
 
-            # Build containers independently
-            docker compose -f docker-compose.prod.yml build spring
-            docker compose -f docker-compose.prod.yml build react
-            docker compose -f docker-compose.prod.yml build db
+            # === Step 3: Build Docker containers independently ===
+            docker compose -f docker-compose.prod.yml build --parallel
 
-            # Start all containers
+            # === Step 4: Start containers ===
             docker compose -f docker-compose.prod.yml up -d
-
-            # Verify status
-            docker ps
-            echo "Deployment complete!"
           EOF
