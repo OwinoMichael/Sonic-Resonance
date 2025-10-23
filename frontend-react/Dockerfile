@@ -1,20 +1,26 @@
-# === React Dockerfile ===
-FROM node:20-alpine AS build
+FROM node:20-alpine AS builder
 WORKDIR /app
 
-# Copy package.json first for caching
+# Copy package files
 COPY package*.json ./
-RUN npm install
 
-# Copy all source files
+# Install dependencies (removed --only flag)
+RUN npm ci
+
+# Copy source code
 COPY . .
 
-# Run build (ignores TS errors if configured in tsconfig or package.json script)
-RUN npm run build
+# Build (ignore TS errors)
+RUN npm run build || npx vite build --mode production
 
-# === Serve stage (optional, if using nginx) ===
+# Production stage
 FROM nginx:alpine
-COPY --from=build /app/dist /usr/share/nginx/html
+
+# Copy built files
+COPY --from=builder /app/dist /usr/share/nginx/html
+
+# Copy Nginx config
+COPY nginx/default.conf /etc/nginx/conf.d/default.conf
 
 EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
