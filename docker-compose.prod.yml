@@ -1,14 +1,14 @@
 services:
   db:
-    image: postgres:16
+    image: postgres:16-alpine
     container_name: pg-db-prod
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER}
-      POSTGRES_PASSWORD: ${DB_PASS}
-      POSTGRES_DB: ${DB_NAME}
+      POSTGRES_USER: ${DB_USER:-sonicres}
+      POSTGRES_PASSWORD: ${DB_PASS:-sonicres123}
+      POSTGRES_DB: ${DB_NAME:-sonic_resonance}
     volumes:
-      - pgdata_local:/var/lib/postgresql/data
+      - pgdata_prod:/var/lib/postgresql/data
     ports:
       - "5433:5432"
     networks:
@@ -20,55 +20,33 @@ services:
       retries: 10
 
   spring:
-    image: maven:3.9.9-eclipse-temurin-21
+    build:
+      context: ./backend-spring
+      dockerfile: Dockerfile
     container_name: springboot-app-prod
     restart: unless-stopped
-    working_dir: /app
-    environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASS}
-      SPRING_JPA_HIBERNATE_DDL_AUTO: update
     depends_on:
-      db:
-        condition: service_healthy
-    volumes:
-      - ./backend-spring:/app
-      - ~/.m2:/root/.m2
+      - db
     ports:
       - "8080:8080"
+    env_file:
+      - .env
     networks:
       - app-network
-    # Install FFmpeg then run Spring Boot
-    command: >
-      bash -c "
-        apt-get update && 
-        apt-get install -y ffmpeg && 
-        mvn spring-boot:run
-      "
 
   react:
-    image: node:20-alpine
+    build:
+      context: ./frontend-react
+      dockerfile: Dockerfile
     container_name: react-app-prod
     restart: unless-stopped
-    working_dir: /app
-    environment:
-      - VITE_WS_URL=ws://localhost:8080/ws/audio
-      - VITE_API_URL=http://localhost:8080/api
-    depends_on:
-      - spring
-    volumes:
-      - ./frontend-react:/app
-      - /app/node_modules
     ports:
-      - "5173:5173"
+      - "3000:80"
     networks:
       - app-network
-    command: sh -c "npm install && npm run dev -- --host 0.0.0.0"
 
 volumes:
-  pgdata_local:
-  audio_temp:  # Shared volume for audio processing
+  pgdata_prod:
 
 networks:
   app-network:

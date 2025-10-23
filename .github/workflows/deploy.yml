@@ -1,0 +1,60 @@
+name: Deploy Sonic-Resonance with Independent Builds
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v3
+
+      - name: Set up SSH key
+        run: |
+          mkdir -p ~/.ssh
+          echo "${{ secrets.SSH_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+
+      - name: Test SSH connection
+        run: ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST }} "echo SSH OK"
+
+      - name: Deploy on droplet
+        run: |
+          ssh -o StrictHostKeyChecking=no ${{ secrets.USERNAME }}@${{ secrets.HOST }} << 'EOF'
+            set -e
+
+            # Navigate to project
+            cd /opt/sonicres/Sonic-Resonance
+
+            # Update code without touching .env
+            git fetch --all
+            git reset --hard origin/main
+            echo "Source updated"
+
+            # Enable swap if less than 1GB free memory
+            MEM_FREE=$(free -m | awk '/^Mem:/{print $7}')
+            if [ "$MEM_FREE" -lt 1024 ]; then
+              echo "Low memory detected: $MEM_FREE MB, adding 1G swap"
+              sudo fallocate -l 1G /swapfile
+              sudo chmod 600 /swapfile
+              sudo mkswap /swapfile
+              sudo swapon /swapfile
+            fi
+
+            # Build containers independently
+            docker compose -f docker-compose.prod.yml build spring
+            docker compose -f docker-compose.prod.yml build react
+            docker compose -f docker-compose.prod.yml build db
+
+            # Start all containers
+            docker compose -f docker-compose.prod.yml up -d
+
+            # Verify status
+            docker ps
+            echo "Deployment complete!"
+          EOF
