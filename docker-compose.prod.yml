@@ -9,10 +9,9 @@ services:
       POSTGRES_DB: ${DB_NAME:-sonic_resonance}
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
-    ports:
-      - "5433:5432"
     networks:
       - app-network
+
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sonicres}"]
       interval: 5s
