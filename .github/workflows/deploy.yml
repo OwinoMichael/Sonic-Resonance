@@ -1,55 +1,35 @@
-name: CI/CD Sonic-Resonance
+name: Deploy Sonic Resonance
 
 on:
   push:
-    branches:
-      - main
+    branches: [ main ]
 
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    env:
-      DROPLET_HOST: ${{ secrets.HOST }}
-      DROPLET_USER: ${{ secrets.USERNAME }}
-      SSH_KEY: ${{ secrets.SSH_KEY }}
 
     steps:
-      - name: Checkout repo
-        uses: actions/checkout@v3
-
-      - name: Set up SSH
-        run: |
-          mkdir -p ~/.ssh
-          echo "${SSH_KEY}" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
-          ssh-keyscan -H $DROPLET_HOST >> ~/.ssh/known_hosts
-
-      - name: Deploy to droplet
-        run: |
-          ssh -o StrictHostKeyChecking=no $DROPLET_USER@$DROPLET_HOST << 'EOF'
+      - name: Deploy to VPS
+        uses: appleboy/ssh-action@v1.2.0
+        with:
+          host: ${{ secrets.DROPLET_IP }}
+          username: root
+          key: ${{ secrets.DROPLET_SSH_KEY }}
+          script: |
+            
             echo "Connected to droplet"
 
             # === Step 1: Update code ===
-            cd /opt/sonicres/Sonic-Resonance
-            git fetch --all
-            git reset --hard origin/main
+            cd /root/projects/Sonic-Resonance
+            
+            echo "Pulling latest code"
+            git pull origin main
 
-            # === Step 2: Check memory and swap ===
-            MEM_FREE=$(free -m | awk '/^Mem:/ {print $7}') # available memory in MB
-            SWAP_TOTAL=$(swapon --show --noheadings | awk '{sum+=$3} END {print sum}')
-            echo "Memory available: $MEM_FREE MB, Swap total: ${SWAP_TOTAL:-0} MB"
+            echo "Stopping existing containers"
+            docker compose -f docker-compose.prod.yml down
 
-            if [ "$MEM_FREE" -lt 200 ] && [ -z "$SWAP_TOTAL" ]; then
-              echo "Low memory detected. Adding 1G swap..."
-              sudo dd if=/dev/zero of=/swapfile bs=1M count=1024
-              sudo chmod 600 /swapfile
-              sudo mkswap /swapfile
-              sudo swapon /swapfile
-            fi
+            echo "Rebuilding and starting containers"
+            docker compose -f docker-compose.prod.yml up -d --build
 
-            # === Step 3: Build Docker containers independently ===
-            docker compose -f docker-compose.prod.yml build --parallel
-
-            # === Step 4: Start containers ===
-            docker compose -f docker-compose.prod.yml up -d
-          EOF
+            echo "Cleaning unused docker images"
+            docker image prune -f
