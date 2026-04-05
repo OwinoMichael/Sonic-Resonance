@@ -4,16 +4,15 @@ services:
     container_name: pg-db-prod
     restart: unless-stopped
     environment:
-      POSTGRES_USER: ${DB_USER:-sonicres}
-      POSTGRES_PASSWORD: ${DB_PASS:-sonicres123}
+      POSTGRES_USER: ${DB_USER:-postgres}
+      POSTGRES_PASSWORD: ${DB_PASS:-Mike2000}
       POSTGRES_DB: ${DB_NAME:-sonic_resonance}
     volumes:
       - pgdata_prod:/var/lib/postgresql/data
     networks:
       - app-network
-
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-sonicres}"]
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER:-postgres}"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -25,18 +24,28 @@ services:
     container_name: springboot-app-prod
     restart: unless-stopped
     depends_on:
-      - db
+      db:
+        condition: service_healthy
     ports:
       - "8081:8080"
     env_file:
       - .env
     networks:
       - app-network
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/actuator/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
 
   react:
     build:
       context: ./frontend-react
       dockerfile: Dockerfile
+      args:
+        VITE_WS_URL: ${VITE_WS_URL}
+        VITE_API_URL: ${VITE_API_URL}
     container_name: react-app-prod
     restart: unless-stopped
     ports:
