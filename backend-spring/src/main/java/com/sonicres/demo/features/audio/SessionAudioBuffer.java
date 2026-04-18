@@ -19,7 +19,7 @@ public class SessionAudioBuffer {
         this.tempFile = File.createTempFile("audio-stream-" + session.getId() + "-", ".raw");
         this.outputStream = new BufferedOutputStream(new FileOutputStream(tempFile));
 
-        System.out.println("📦 Created SessionAudioBuffer: " + tempFile.getName());
+
     }
 
     public synchronized void append(java.nio.ByteBuffer buffer) throws IOException {
