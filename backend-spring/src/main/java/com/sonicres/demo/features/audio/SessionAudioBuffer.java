@@ -1,6 +1,8 @@
 package com.sonicres.demo.features.audio;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.*;
@@ -13,6 +15,8 @@ public class SessionAudioBuffer {
     private final OutputStream outputStream;
     private volatile boolean closed = false;
     private long totalBytesWritten = 0;
+
+    private static final Logger Log = LoggerFactory.getLogger(SessionAudioBuffer.class);
 
     public SessionAudioBuffer(WebSocketSession session) throws IOException {
         this.session = session;
@@ -56,7 +60,7 @@ public class SessionAudioBuffer {
             outputStream.flush(); // Write memory buffer to disk
             outputStream.close(); // Release file handle
             closed = true;
-            System.out.println("🔒 Buffer closed for processing. Total bytes: " + totalBytesWritten);
+            Log.info("🔒 Buffer closed for processing. Total bytes: " + totalBytesWritten);
         }
     }
 
@@ -71,7 +75,7 @@ public class SessionAudioBuffer {
         if (tempFile != null && tempFile.exists()) {
             boolean deleted = tempFile.delete();
             if (deleted) {
-                System.out.println("🗑️  Deleted temp file: " + tempFile.getName());
+                Log.info("🗑️  Deleted temp file: " + tempFile.getName());
             }
         }
     }
