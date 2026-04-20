@@ -1,6 +1,10 @@
 package com.sonicres.demo.features.audio;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sonicres.demo.features.audio.audioProcessing.AudioConversionService;
+import com.sonicres.demo.features.audio.audioProcessing.AudioProcessingTask;
+import com.sonicres.demo.features.audio.buffer.SessionAudioBuffer;
+import com.sonicres.demo.features.audio.fingerprint.FingerprintService;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
@@ -36,10 +40,13 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
             Math.max(2, Runtime.getRuntime().availableProcessors())
     );
     private final FingerprintService fingerprintService;
+    private final AudioConversionService conversionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
 
-    public AudioSocketConnectionHandler(FingerprintService fingerprintService) {
+    public AudioSocketConnectionHandler(FingerprintService fingerprintService,
+                                        AudioConversionService conversionService) {
         this.fingerprintService = fingerprintService;
+        this.conversionService = conversionService;
     }
 
     @Override
@@ -159,7 +166,9 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
         }
 
         // Submit processing task
-        AudioProcessingTask task = new AudioProcessingTask(buffer, fingerprintService);
+        AudioProcessingTask task = new AudioProcessingTask(
+                buffer, fingerprintService, conversionService
+        );
         processingPool.submit(task);
         Log.info("✓ Submitted processing task to thread pool");
     }

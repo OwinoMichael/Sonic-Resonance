@@ -1,4 +1,4 @@
-package com.sonicres.demo.features.audio;
+package com.sonicres.demo.features.audio.fingerprint;
 
 import org.springframework.stereotype.Service;
 

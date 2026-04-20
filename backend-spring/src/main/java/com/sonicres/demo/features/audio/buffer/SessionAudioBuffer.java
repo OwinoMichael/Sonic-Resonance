@@ -1,4 +1,4 @@
-package com.sonicres.demo.features.audio;
+package com.sonicres.demo.features.audio.buffer;
 
 
 import org.slf4j.Logger;
