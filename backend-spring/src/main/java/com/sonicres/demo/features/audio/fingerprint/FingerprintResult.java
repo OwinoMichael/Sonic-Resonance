@@ -49,16 +49,7 @@ public class FingerprintResult {
         return confidence;
     }
 
-    public String toJSON() {
-        try {
-            ObjectMapper mapper = new ObjectMapper();
-            mapper.configure(JsonGenerator.Feature.QUOTE_NON_NUMERIC_NUMBERS, true);
-            ObjectWriter ow = mapper.writerWithDefaultPrettyPrinter();
-            return ow.writeValueAsString(this);
-        } catch (JsonProcessingException e) {
-            throw new RuntimeException("Error converting to JSON", e);
-        }
-    }
+
 }
 
 

@@ -62,6 +62,7 @@ public class ChromaprintFingerprintService implements FingerprintService {
         result.setTrackName("Unknown");
         result.setArtist("Unknown");
         result.setConfidence(0.0);
+        result.setFingerprint(fingerprint);
 
         log.info("✅ Fingerprint generated. Duration: {}s", duration);
 
