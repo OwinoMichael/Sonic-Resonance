@@ -9,6 +9,7 @@ public class FingerprintResult {
     private String trackName;
     private String artist;
     private Double confidence;
+    private String fingerprint;
 
     public FingerprintResult() {}
 
@@ -25,6 +26,14 @@ public class FingerprintResult {
             confidence = 0.0;
         }
         this.confidence = confidence;
+    }
+
+    public String getFingerprint() {
+        return fingerprint;
+    }
+
+    public void setFingerprint(String fingerprint) {
+        this.fingerprint = fingerprint;
     }
 
     // ✅ Add these getters
