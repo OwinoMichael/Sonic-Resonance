@@ -44,6 +44,14 @@
 			<artifactId>spring-boot-starter-test</artifactId>
 			<scope>test</scope>
 		</dependency>
+
+		<dependency>
+			<groupId>org.springframework</groupId>
+			<artifactId>spring-jdbc</artifactId>
+			<version>7.0.7</version>
+			<scope>compile</scope>
+		</dependency>
+
 		<!-- Jave2 for audio decoding -->
 		<dependency>
 			<groupId>ws.schild</groupId>
@@ -75,6 +83,13 @@
 			<groupId>org.postgresql</groupId>
 			<artifactId>postgresql</artifactId>
 			<version>42.7.5</version>
+		</dependency>
+
+		<dependency>
+			<groupId>org.springframework.boot</groupId>
+			<artifactId>spring-boot-starter-webclient</artifactId>
+			<version>4.1.0-RC1</version>
+			<scope>compile</scope>
 		</dependency>
 
 		<dependency>
