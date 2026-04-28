@@ -9,13 +9,16 @@ export interface RecordingCallbacks {
 
 export interface FingerprintResult {
   matches?: Array<{
-    title: string;      // ← was trackName
+    title: string;
     artist: string;
     album?: string;
     confidence: number;
-    year?: number;
+    coverArtUrl?: string;
+    releaseDate?: string;
+    durationMs?: number;
     links?: {
       spotify?: string;
+      deezer?: string;
       youtube?: string;
       apple?: string;
     };

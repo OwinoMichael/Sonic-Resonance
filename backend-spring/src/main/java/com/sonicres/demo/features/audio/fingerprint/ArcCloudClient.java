@@ -144,8 +144,39 @@ public class ArcCloudClient {
 
         log.info("✅ ACRCloud match: {} - {} (confidence: {})", artist, title, score);
 
+        JsonNode spotify = music.path("external_metadata").path("spotify");
+        JsonNode deezer = music.path("external_metadata").path("deezer");
+
         FingerprintResult result = new FingerprintResult(title, artist, score);
-        result.setAlbum(music.path("album").path("name").asText(null)); // ← add this
+        result.setAlbum(music.path("album").path("name").asText(null));
+        result.setReleaseDate(music.path("release_date").asText(null));
+        result.setDurationMs(music.path("duration_ms").asInt(0));
+        result.setLabel(music.path("label").asText(null));
+        result.setSpotifyTrackId(spotify.path("track").path("id").asText(null));
+        result.setDeezerTrackId(deezer.path("track").path("id").asText(null));
+        result.setCoverArtUrl(fetchDeezerCoverArt(result.getDeezerTrackId()));
         return result;
+    }
+
+    private String fetchDeezerCoverArt(String deezerTrackId) {
+        if (deezerTrackId == null) return null;
+        try {
+            URL url = new URL("https://api.deezer.com/track/" + deezerTrackId);
+            HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+            conn.setRequestMethod("GET");
+
+            String response;
+            try (BufferedReader br = new BufferedReader(
+                    new InputStreamReader(conn.getInputStream()))) {
+                response = br.lines().collect(Collectors.joining("\n"));
+            }
+
+            JsonNode root = objectMapper.readTree(response);
+            return root.path("album").path("cover_big").asText(null);
+
+        } catch (Exception e) {
+            log.warn("Failed to fetch Deezer cover art: {}", e.getMessage());
+            return null;
+        }
     }
 }

@@ -35,12 +35,17 @@ export default function HomePage({ navigate }: HomePageProps) {
         sessionStorage.setItem('status', 'Analyzing audio...');
       },
       onResult: (result: FingerprintResult) => {
+        console.log(result)
         if (result.matches && result.matches.length > 0) {
           const formatted = result.matches.map((m) => ({
             title: m.title,
             artist: m.artist,
             album: m.album,
             confidence: Math.round(m.confidence * 100),
+            coverArtUrl: m.coverArtUrl,        // ← add
+            releaseDate: m.releaseDate,        // ← add
+            durationMs: m.durationMs,          // ← add
+            links: m.links,                    // ← add
           }));
           sessionStorage.setItem('matchResults', JSON.stringify(formatted));
           navigate('/matches');

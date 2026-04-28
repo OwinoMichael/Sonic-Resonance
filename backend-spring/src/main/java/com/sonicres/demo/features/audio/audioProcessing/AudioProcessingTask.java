@@ -88,6 +88,15 @@ public class AudioProcessingTask implements Runnable {
                     matchMap.put("artist", result.getArtist());
                     matchMap.put("album", result.getAlbum());
                     matchMap.put("confidence", result.getConfidence());
+                    matchMap.put("releaseDate", result.getReleaseDate());
+                    matchMap.put("durationMs", result.getDurationMs());
+                    matchMap.put("label", result.getLabel());
+                    matchMap.put("links", Map.of(
+                            "spotify", result.getSpotifyUrl() != null ? result.getSpotifyUrl() : "",
+                            "deezer", result.getDeezerUrl() != null ? result.getDeezerUrl() : "",
+                            "youtube", result.getYouTubeSearchUrl() != null ? result.getYouTubeSearchUrl() : ""
+                    ));
+                    matchMap.put("coverArtUrl", result.getCoverArtUrl());
 
                     payload.put("type", "result");
                     payload.put("matches", List.of(matchMap));
