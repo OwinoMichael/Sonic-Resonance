@@ -1,11 +1,8 @@
 package com.sonicres.demo.features.audio.audioProcessing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.sonicres.demo.features.audio.fingerprint.AcoustIdClient;
-import com.sonicres.demo.features.audio.fingerprint.FingerprintResult;
-import com.sonicres.demo.features.audio.fingerprint.FingerprintService;
+import com.sonicres.demo.features.audio.fingerprint.*;
 import com.sonicres.demo.features.audio.buffer.SessionAudioBuffer;
-import com.sonicres.demo.features.audio.fingerprint.FpcalcResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.CloseStatus;
@@ -29,14 +26,16 @@ public class AudioProcessingTask implements Runnable {
     private final AudioConversionService conversionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final AcoustIdClient acoustIdClient;
+    private final FingerprintCacheRepository cacheRepository;
 
     public AudioProcessingTask(SessionAudioBuffer buffer,
                                FingerprintService fingerprintService,
-                               AudioConversionService conversionService, AcoustIdClient acoustIdClient) {
+                               AudioConversionService conversionService, AcoustIdClient acoustIdClient, FingerprintCacheRepository cacheRepository) {
         this.buffer = buffer;
         this.fingerprintService = fingerprintService;
         this.conversionService = conversionService;
         this.acoustIdClient = acoustIdClient;
+        this.cacheRepository = cacheRepository;
     }
 
     @Override
@@ -61,10 +60,8 @@ public class AudioProcessingTask implements Runnable {
             Log.info("🔍 DEBUG WAV: {}", wavFile.getAbsolutePath());
 
             // Process and send result
-            FingerprintResult result =
-                    fingerprintService.fingerprintAndMatch(wavFile);
-
-            sendResultToClient(session, result);
+            List<FingerprintResult> results = fingerprintService.fingerprintAndMatch(wavFile);
+            sendResultToClient(session, results);
 
             closeSession(session);
 
@@ -77,29 +74,33 @@ public class AudioProcessingTask implements Runnable {
         }
     }
 
-    private void sendResultToClient(WebSocketSession session, FingerprintResult result) {
+    private void sendResultToClient(WebSocketSession session, List<FingerprintResult> results) {
         if (session != null && session.isOpen()) {
             try {
                 Map<String, Object> payload = new HashMap<>();
 
-                if (result != null && result.getTrackName() != null) {
-                    Map<String, Object> matchMap = new HashMap<>();
-                    matchMap.put("title", result.getTrackName());
-                    matchMap.put("artist", result.getArtist());
-                    matchMap.put("album", result.getAlbum());
-                    matchMap.put("confidence", result.getConfidence());
-                    matchMap.put("releaseDate", result.getReleaseDate());
-                    matchMap.put("durationMs", result.getDurationMs());
-                    matchMap.put("label", result.getLabel());
-                    matchMap.put("links", Map.of(
-                            "spotify", result.getSpotifyUrl() != null ? result.getSpotifyUrl() : "",
-                            "deezer", result.getDeezerUrl() != null ? result.getDeezerUrl() : "",
-                            "youtube", result.getYouTubeSearchUrl() != null ? result.getYouTubeSearchUrl() : ""
-                    ));
-                    matchMap.put("coverArtUrl", result.getCoverArtUrl());
+                if (results != null && !results.isEmpty()) {
+                    List<Map<String, Object>> matchList = results.stream()
+                            .map(m -> {
+                                Map<String, Object> map = new HashMap<>();
+                                map.put("title", m.getTrackName());
+                                map.put("artist", m.getArtist());
+                                map.put("album", m.getAlbum());
+                                map.put("confidence", m.getConfidence());
+                                map.put("releaseDate", m.getReleaseDate());
+                                map.put("durationMs", m.getDurationMs());
+                                map.put("coverArtUrl", m.getCoverArtUrl());
+                                map.put("links", Map.of(
+                                        "spotify", m.getSpotifyUrl() != null ? m.getSpotifyUrl() : "",
+                                        "deezer", m.getDeezerUrl() != null ? m.getDeezerUrl() : "",
+                                        "youtube", m.getYouTubeSearchUrl() != null ? m.getYouTubeSearchUrl() : ""
+                                ));
+                                return map;
+                            })
+                            .toList();
 
                     payload.put("type", "result");
-                    payload.put("matches", List.of(matchMap));
+                    payload.put("matches", matchList);
                 } else {
                     payload.put("type", "no-match");
                     payload.put("matches", List.of());
@@ -107,9 +108,7 @@ public class AudioProcessingTask implements Runnable {
                 }
 
                 String json = new ObjectMapper().writeValueAsString(payload);
-
                 session.sendMessage(new TextMessage(json));
-
                 Log.info("✅ Sent result to client: {}", session.getId());
 
             } catch (IOException e) {
@@ -117,6 +116,7 @@ public class AudioProcessingTask implements Runnable {
             }
         }
     }
+
 
     private void sendErrorToClient(WebSocketSession session, String errorMessage) {
         if (session != null && session.isOpen()) {

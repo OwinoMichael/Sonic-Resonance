@@ -15,9 +15,7 @@ import java.net.HttpURLConnection;
 import java.net.URL;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
-import java.util.Base64;
-import java.util.LinkedHashMap;
-import java.util.Map;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Component
@@ -39,12 +37,12 @@ public class ArcCloudClient {
         this.objectMapper = objectMapper;
     }
 
-    public FingerprintResult identify(File audioFile) throws Exception {
+    public List<FingerprintResult> identify(File audioFile) throws Exception {
         byte[] audioBytes = Files.readAllBytes(audioFile.toPath());
         return identify(audioBytes);
     }
 
-    public FingerprintResult identify(byte[] audioBytes) throws Exception {
+    public List<FingerprintResult> identify(byte[] audioBytes) throws Exception {
         String httpMethod = "POST";
         String httpUri = "/v1/identify";
         String dataType = "audio";
@@ -126,36 +124,45 @@ public class ArcCloudClient {
         return out.toByteArray();
     }
 
-    private FingerprintResult parseResponse(String response) throws Exception {
+    private List<FingerprintResult> parseResponse(String response) throws Exception {
         JsonNode root = objectMapper.readTree(response);
         int code = root.path("status").path("code").asInt();
 
         if (code != 0) {
             log.warn("ACRCloud no match or error. Code: {}", code);
-            return new FingerprintResult(); // no match
+            return List.of();
         }
 
-        JsonNode music = root.path("metadata").path("music").get(0);
-        if (music == null) return new FingerprintResult();
+        JsonNode musicArray = root.path("metadata").path("music");
+        if (musicArray == null || !musicArray.isArray() || musicArray.isEmpty()) {
+            return List.of();
+        }
 
-        String title = music.path("title").asText();
-        String artist = music.path("artists").get(0).path("name").asText();
-        double score = music.path("score").asDouble() / 100.0;
+        List<FingerprintResult> results = new ArrayList<>();
 
-        log.info("✅ ACRCloud match: {} - {} (confidence: {})", artist, title, score);
+        for (JsonNode music : musicArray) {
+            String title = music.path("title").asText();
+            String artist = music.path("artists").get(0).path("name").asText();
+            double score = music.path("score").asDouble() / 100.0;
 
-        JsonNode spotify = music.path("external_metadata").path("spotify");
-        JsonNode deezer = music.path("external_metadata").path("deezer");
+            log.info("✅ ACRCloud match: {} - {} (confidence: {})", artist, title, score);
 
-        FingerprintResult result = new FingerprintResult(title, artist, score);
-        result.setAlbum(music.path("album").path("name").asText(null));
-        result.setReleaseDate(music.path("release_date").asText(null));
-        result.setDurationMs(music.path("duration_ms").asInt(0));
-        result.setLabel(music.path("label").asText(null));
-        result.setSpotifyTrackId(spotify.path("track").path("id").asText(null));
-        result.setDeezerTrackId(deezer.path("track").path("id").asText(null));
-        result.setCoverArtUrl(fetchDeezerCoverArt(result.getDeezerTrackId()));
-        return result;
+            JsonNode spotify = music.path("external_metadata").path("spotify");
+            JsonNode deezer = music.path("external_metadata").path("deezer");
+
+            FingerprintResult result = new FingerprintResult(title, artist, score);
+            result.setAlbum(music.path("album").path("name").asText(null));
+            result.setReleaseDate(music.path("release_date").asText(null));
+            result.setDurationMs(music.path("duration_ms").asInt(0));
+            result.setLabel(music.path("label").asText(null));
+            result.setSpotifyTrackId(spotify.path("track").path("id").asText(null));
+            result.setDeezerTrackId(deezer.path("track").path("id").asText(null));
+            result.setCoverArtUrl(fetchDeezerCoverArt(result.getDeezerTrackId()));
+
+            results.add(result);
+        }
+
+        return results;
     }
 
     private String fetchDeezerCoverArt(String deezerTrackId) {

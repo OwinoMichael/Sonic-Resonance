@@ -1,6 +1,5 @@
 package com.sonicres.demo.features.audio.fingerprint;
 
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -30,26 +29,22 @@ public class ChromaprintFingerprintService implements FingerprintService {
 
 
     @Override
-    public FingerprintResult fingerprintAndMatch(File wavFile) throws Exception {
-
-        // 1. Check cache by filename hash (no fingerprinting needed for ACRCloud)
+    public List<FingerprintResult> fingerprintAndMatch(File wavFile) throws Exception {
         String cacheKey = wavFile.getName().substring(0, Math.min(100, wavFile.getName().length()));
 
         List<FingerprintResult> cached = cacheRepository.find(cacheKey);
         if (cached != null && !cached.isEmpty()) {
-            return cached.get(0);
+            return cached;
         }
 
-        // 2. Call ACRCloud directly with WAV file
-        FingerprintResult match = acrCloudClient.identify(wavFile);
+        List<FingerprintResult> matches = acrCloudClient.identify(wavFile);
 
-        // 3. Cache and return
-        if (match != null && match.getConfidence() != null) {
-            cacheRepository.save(cacheKey, List.of(match));
-            return match;
+        if (matches == null || matches.isEmpty()) {
+            return List.of();
         }
 
-        return new FingerprintResult(); // no match
+        cacheRepository.save(cacheKey, matches);
+        return matches;
     }
 
     private FingerprintData generateFingerprintData(File wavFile) throws Exception {
