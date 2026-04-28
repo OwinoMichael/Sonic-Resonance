@@ -30,6 +30,10 @@ services:
       - "8081:8080"
     env_file:
       - .env
+    environment:
+      - ACRCLOUD_ACCESS_KEY=${ACCESS_KEY}
+      - ACRCLOUD_ACCESS_SECRET=${ACCESS_SECRET}
+      - ACRCLOUD_HOST=${ACRCLOUD_HOST}
     networks:
       - app-network
     healthcheck:
