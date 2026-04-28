@@ -153,14 +153,14 @@ public class AudioProcessingTask implements Runnable {
     private void cleanup(File... files) {
         for (File file : files) {
             if (file != null) {
-                //try {
-                    //Files.deleteIfExists(file.toPath());
-                   // Log.info("🗑️ Deleted temp file: {}", file.getName());
-                Log.info("🔍 DEBUG: Kept temp file at: {}", file.getAbsolutePath());
-                //} catch (IOException e) {
-                //    Log.error("⚠️ Failed to delete temp file {}: {}",
-                 //           file.getName(), e.getMessage(), e);
-                //}
+                try {
+                    Files.deleteIfExists(file.toPath());
+                    Log.info("🗑️ Deleted temp file: {}", file.getName());
+//                Log.info("🔍 DEBUG: Kept temp file at: {}", file.getAbsolutePath());
+                } catch (IOException e) {
+                    Log.error("⚠️ Failed to delete temp file {}: {}",
+                            file.getName(), e.getMessage(), e);
+                }
             }
         }
     }
