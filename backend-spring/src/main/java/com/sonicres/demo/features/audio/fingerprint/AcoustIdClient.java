@@ -7,6 +7,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.web.reactive.function.client.WebClient;
 
+import java.net.URI;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -29,20 +30,33 @@ public class AcoustIdClient {
 
     public List<FingerprintResult> lookup(String fingerprint, int duration) {
 
+        log.info("fingerprint = {}", fingerprint);
+        log.info("duration = {}", duration);
+        log.info("API KEY = {}", apiKey);
+        log.info("fp length = {}", fingerprint.length());
+
         String response = webClient.get()
-                .uri(uriBuilder -> uriBuilder
-                        .scheme("https")
-                        .host("api.acoustid.org")
-                        .path("/v2/lookup")
-                        .queryParam("client", apiKey)
-                        .queryParam("meta", "recordings")
-                        .queryParam("fingerprint", fingerprint)
-                        .queryParam("duration", duration)
-                        .build()
-                )
+                .uri(uriBuilder -> {
+
+                    URI uri = uriBuilder
+                            .scheme("https")
+                            .host("api.acoustid.org")
+                            .path("/v2/lookup")
+                            .queryParam("client", apiKey)
+                            .queryParam("format", "json")
+                            .queryParam("meta", "recordings")
+                            .queryParam("fingerprint", fingerprint)
+                            .queryParam("duration", duration)
+                            .build();
+
+                    log.info("FINAL AcoustID URI = {}", uri);
+
+                    return uri;
+                })
                 .retrieve()
                 .bodyToMono(String.class)
-                .block(); // safe because you're already async
+                .block();
+
 
         return parseResults(response);
     }

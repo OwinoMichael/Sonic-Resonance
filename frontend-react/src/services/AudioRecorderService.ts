@@ -8,20 +8,16 @@ export interface RecordingCallbacks {
 }
 
 export interface FingerprintResult {
-  type: 'result' | 'no-match';
   matches?: Array<{
-    trackId: string;
-    title: string;
+    title: string;      // ← was trackName
     artist: string;
     album?: string;
     confidence: number;
-    duration?: string;
     year?: number;
     links?: {
-      youtube?: string;
       spotify?: string;
+      youtube?: string;
       apple?: string;
-      soundcloud?: string;
     };
   }>;
   message?: string;
@@ -38,7 +34,7 @@ export class AudioRecorderService {
   private isRecording: boolean = false;
   private callbacks: RecordingCallbacks = {};
 
-  constructor(websocketUrl: string, recordingDuration: number = 10000) {
+  constructor(websocketUrl: string, recordingDuration: number = 20000) { // Changed to 20 seconds (20000ms)
     this.websocketUrl = websocketUrl;
     this.recordingDuration = recordingDuration;
   }
@@ -216,7 +212,7 @@ export class AudioRecorderService {
         case 'no-match':
           console.log('⚠️  No match found');
           this.callbacks.onResult?.({
-            type: 'no-match',
+            matches: [],
             message: message.message || 'No match found',
           });
           this.callbacks.onComplete?.();

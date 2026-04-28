@@ -11,7 +11,7 @@ interface HomePageProps {
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/audio';
 
 export default function HomePage({ navigate }: HomePageProps) {
-  const [recorder] = useState(() => new AudioRecorderService(WS_URL, 10000));
+  const [recorder] = useState(() => new AudioRecorderService(WS_URL, 20000)); // Changed to 20000ms (20 seconds)
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
@@ -22,21 +22,27 @@ export default function HomePage({ navigate }: HomePageProps) {
         setIsStarting(false);
       },
       onRecording: (timeRemaining) => {
-        console.log(`Recording... ${timeRemaining}s remaining`);
-        // Only navigate on first recording callback
-        if (timeRemaining === 10) {
+        sessionStorage.setItem('timeRemaining', String(timeRemaining));
+        sessionStorage.setItem('status', 'Listening...');
+        
+        // Navigate when recording starts (timeRemaining will be 20)
+        if (timeRemaining === 20) { // Changed from 10 to 20
           navigate('/listening');
         }
       },
+
       onProcessing: () => {
-        console.log('Processing audio...');
-        // Stay on listening page during processing
+        sessionStorage.setItem('status', 'Analyzing audio...');
       },
       onResult: (result: FingerprintResult) => {
-        console.log('Received result from server:', result);
-        if (result.type === 'result' && result.matches && result.matches.length > 0) {
-          // Store matches in sessionStorage for MatchesPage to use
-          sessionStorage.setItem('matchResults', JSON.stringify(result.matches));
+        if (result.matches && result.matches.length > 0) {
+          const formatted = result.matches.map((m) => ({
+            title: m.title,
+            artist: m.artist,
+            album: m.album,
+            confidence: Math.round(m.confidence * 100),
+          }));
+          sessionStorage.setItem('matchResults', JSON.stringify(formatted));
           navigate('/matches');
         } else {
           navigate('/no-match');

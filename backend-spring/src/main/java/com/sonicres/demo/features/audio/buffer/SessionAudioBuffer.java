@@ -20,7 +20,7 @@ public class SessionAudioBuffer {
 
     public SessionAudioBuffer(WebSocketSession session) throws IOException {
         this.session = session;
-        this.tempFile = File.createTempFile("audio-stream-" + session.getId() + "-", ".raw");
+        this.tempFile = File.createTempFile("audio-stream-" + session.getId() + "-", ".webm");
         this.outputStream = new BufferedOutputStream(new FileOutputStream(tempFile));
 
 

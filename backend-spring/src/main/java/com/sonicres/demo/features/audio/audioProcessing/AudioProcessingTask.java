@@ -1,9 +1,11 @@
 package com.sonicres.demo.features.audio.audioProcessing;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sonicres.demo.features.audio.fingerprint.AcoustIdClient;
 import com.sonicres.demo.features.audio.fingerprint.FingerprintResult;
 import com.sonicres.demo.features.audio.fingerprint.FingerprintService;
 import com.sonicres.demo.features.audio.buffer.SessionAudioBuffer;
+import com.sonicres.demo.features.audio.fingerprint.FpcalcResult;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.CloseStatus;
@@ -12,6 +14,9 @@ import org.springframework.web.socket.WebSocketSession;
 
 import java.io.*;
 import java.nio.file.Files;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 
 
@@ -23,13 +28,15 @@ public class AudioProcessingTask implements Runnable {
     private final FingerprintService fingerprintService;
     private final AudioConversionService conversionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AcoustIdClient acoustIdClient;
 
     public AudioProcessingTask(SessionAudioBuffer buffer,
                                FingerprintService fingerprintService,
-                               AudioConversionService conversionService) {
+                               AudioConversionService conversionService, AcoustIdClient acoustIdClient) {
         this.buffer = buffer;
         this.fingerprintService = fingerprintService;
         this.conversionService = conversionService;
+        this.acoustIdClient = acoustIdClient;
     }
 
     @Override
@@ -51,10 +58,14 @@ public class AudioProcessingTask implements Runnable {
 
             // Let the service handle conversion
             wavFile = conversionService.convertToWav(rawFile);
+            Log.info("🔍 DEBUG WAV: {}", wavFile.getAbsolutePath());
 
             // Process and send result
-            FingerprintResult result = fingerprintService.fingerprintAndMatch(wavFile);
+            FingerprintResult result =
+                    fingerprintService.fingerprintAndMatch(wavFile);
+
             sendResultToClient(session, result);
+
             closeSession(session);
 
         } catch (Exception e) {
@@ -69,9 +80,29 @@ public class AudioProcessingTask implements Runnable {
     private void sendResultToClient(WebSocketSession session, FingerprintResult result) {
         if (session != null && session.isOpen()) {
             try {
-                String resultJson = result.toJSON();
-                session.sendMessage(new TextMessage(resultJson));
+                Map<String, Object> payload = new HashMap<>();
+
+                if (result != null && result.getTrackName() != null) {
+                    Map<String, Object> matchMap = new HashMap<>();
+                    matchMap.put("title", result.getTrackName());
+                    matchMap.put("artist", result.getArtist());
+                    matchMap.put("album", result.getAlbum());
+                    matchMap.put("confidence", result.getConfidence());
+
+                    payload.put("type", "result");
+                    payload.put("matches", List.of(matchMap));
+                } else {
+                    payload.put("type", "no-match");
+                    payload.put("matches", List.of());
+                    payload.put("message", "No match found");
+                }
+
+                String json = new ObjectMapper().writeValueAsString(payload);
+
+                session.sendMessage(new TextMessage(json));
+
                 Log.info("✅ Sent result to client: {}", session.getId());
+
             } catch (IOException e) {
                 Log.error("❌ Failed to send result: {}", e.getMessage(), e);
             }
@@ -113,13 +144,14 @@ public class AudioProcessingTask implements Runnable {
     private void cleanup(File... files) {
         for (File file : files) {
             if (file != null) {
-                try {
-                    Files.deleteIfExists(file.toPath());
-                    Log.info("🗑️ Deleted temp file: {}", file.getName());
-                } catch (IOException e) {
-                    Log.error("⚠️ Failed to delete temp file {}: {}",
-                            file.getName(), e.getMessage(), e);
-                }
+                //try {
+                    //Files.deleteIfExists(file.toPath());
+                   // Log.info("🗑️ Deleted temp file: {}", file.getName());
+                Log.info("🔍 DEBUG: Kept temp file at: {}", file.getAbsolutePath());
+                //} catch (IOException e) {
+                //    Log.error("⚠️ Failed to delete temp file {}: {}",
+                 //           file.getName(), e.getMessage(), e);
+                //}
             }
         }
     }
