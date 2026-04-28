@@ -25,17 +25,14 @@ public class AudioProcessingTask implements Runnable {
     private final FingerprintService fingerprintService;
     private final AudioConversionService conversionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
-    private final AcoustIdClient acoustIdClient;
-    private final FingerprintCacheRepository cacheRepository;
+    //private final FingerprintCacheRepository cacheRepository;
 
     public AudioProcessingTask(SessionAudioBuffer buffer,
                                FingerprintService fingerprintService,
-                               AudioConversionService conversionService, AcoustIdClient acoustIdClient, FingerprintCacheRepository cacheRepository) {
+                               AudioConversionService conversionService) {
         this.buffer = buffer;
         this.fingerprintService = fingerprintService;
         this.conversionService = conversionService;
-        this.acoustIdClient = acoustIdClient;
-        this.cacheRepository = cacheRepository;
     }
 
     @Override
