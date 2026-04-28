@@ -43,8 +43,8 @@ export default function HomePage({ navigate }: HomePageProps) {
             album: m.album,
             confidence: Math.round(m.confidence * 100),
             coverArtUrl: m.coverArtUrl,        // ← add
-            releaseDate: m.releaseDate,        // ← add
-            durationMs: m.durationMs,          // ← add
+            year: m.releaseDate ? new Date(m.releaseDate).getFullYear() : undefined,
+            duration: m.durationMs ? formatDuration(m.durationMs) : undefined,
             links: m.links,                    // ← add
           }));
           sessionStorage.setItem('matchResults', JSON.stringify(formatted));
@@ -87,6 +87,13 @@ export default function HomePage({ navigate }: HomePageProps) {
       setIsStarting(false);
       alert('Failed to start recording. Please check microphone permissions.');
     }
+  };
+
+  const formatDuration = (ms: number): string => {
+    const totalSeconds = Math.floor(ms / 1000);
+    const minutes = Math.floor(totalSeconds / 60);
+    const seconds = totalSeconds % 60;
+    return `${minutes}:${seconds.toString().padStart(2, '0')}`;
   };
 
   return (
