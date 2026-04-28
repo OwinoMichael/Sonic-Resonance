@@ -1,6 +1,8 @@
-package com.sonicres.demo.features.audio;
+package com.sonicres.demo.features.audio.buffer;
 
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.web.socket.WebSocketSession;
 
 import java.io.*;
@@ -14,12 +16,14 @@ public class SessionAudioBuffer {
     private volatile boolean closed = false;
     private long totalBytesWritten = 0;
 
+    private static final Logger Log = LoggerFactory.getLogger(SessionAudioBuffer.class);
+
     public SessionAudioBuffer(WebSocketSession session) throws IOException {
         this.session = session;
-        this.tempFile = File.createTempFile("audio-stream-" + session.getId() + "-", ".raw");
+        this.tempFile = File.createTempFile("audio-stream-" + session.getId() + "-", ".webm");
         this.outputStream = new BufferedOutputStream(new FileOutputStream(tempFile));
 
-        System.out.println("📦 Created SessionAudioBuffer: " + tempFile.getName());
+
     }
 
     public synchronized void append(java.nio.ByteBuffer buffer) throws IOException {
@@ -56,7 +60,7 @@ public class SessionAudioBuffer {
             outputStream.flush(); // Write memory buffer to disk
             outputStream.close(); // Release file handle
             closed = true;
-            System.out.println("🔒 Buffer closed for processing. Total bytes: " + totalBytesWritten);
+            Log.info("🔒 Buffer closed for processing. Total bytes: " + totalBytesWritten);
         }
     }
 
@@ -71,7 +75,7 @@ public class SessionAudioBuffer {
         if (tempFile != null && tempFile.exists()) {
             boolean deleted = tempFile.delete();
             if (deleted) {
-                System.out.println("🗑️  Deleted temp file: " + tempFile.getName());
+                Log.info("🗑️  Deleted temp file: " + tempFile.getName());
             }
         }
     }

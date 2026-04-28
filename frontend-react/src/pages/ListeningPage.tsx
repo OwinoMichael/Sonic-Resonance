@@ -1,19 +1,26 @@
-import React, { useEffect, useState } from 'react';
-import { Music2 } from 'lucide-react';
-import AppLayout from '../components/AppLayout';
+import AppLayout from "@/components/AppLayout";
+import { Music2 } from "lucide-react";
+import { useEffect, useState } from "react";
 
 interface ListeningPageProps {
   navigate: (path: string) => void;
 }
 
 export default function ListeningPage({ navigate }: ListeningPageProps) {
-  const [timeRemaining, setTimeRemaining] = useState(10);
+  const [timeRemaining, setTimeRemaining] = useState(20); // Changed to 20 seconds
   const [statusMessage, setStatusMessage] = useState('Listening to audio...');
 
   useEffect(() => {
-    // This page is controlled by the AudioRecorderService callbacks
-    // We could add a listener for real-time updates if needed
-  }, []);
+  const interval = setInterval(() => {
+    const time = sessionStorage.getItem('timeRemaining');
+    const status = sessionStorage.getItem('status');
+
+    if (time) setTimeRemaining(Number(time));
+    if (status) setStatusMessage(status);
+  }, 200);
+
+  return () => clearInterval(interval);
+}, []);
 
   return (
     <AppLayout currentRoute="/" navigate={navigate}>

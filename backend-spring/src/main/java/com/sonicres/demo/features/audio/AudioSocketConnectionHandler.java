@@ -1,6 +1,13 @@
 package com.sonicres.demo.features.audio;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.sonicres.demo.features.audio.audioProcessing.AudioConversionService;
+import com.sonicres.demo.features.audio.audioProcessing.AudioProcessingTask;
+import com.sonicres.demo.features.audio.buffer.SessionAudioBuffer;
+import com.sonicres.demo.features.audio.fingerprint.AcoustIdClient;
+import com.sonicres.demo.features.audio.fingerprint.FingerprintService;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.socket.BinaryMessage;
 import org.springframework.web.socket.CloseStatus;
@@ -27,28 +34,35 @@ import java.util.concurrent.Executors;
 @Component
 public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
 
+    private static final Logger Log = LoggerFactory.getLogger(AudioSocketConnectionHandler.class);
+
     private final ConcurrentMap<String, SessionAudioBuffer> sessions = new ConcurrentHashMap<>();
     private final ExecutorService processingPool = Executors.newFixedThreadPool(
             Math.max(2, Runtime.getRuntime().availableProcessors())
     );
     private final FingerprintService fingerprintService;
+    private final AudioConversionService conversionService;
     private final ObjectMapper objectMapper = new ObjectMapper();
+    private final AcoustIdClient acoustIdClient;
 
-    public AudioSocketConnectionHandler(FingerprintService fingerprintService) {
+    public AudioSocketConnectionHandler(FingerprintService fingerprintService,
+                                        AudioConversionService conversionService, AcoustIdClient acoustIdClient) {
         this.fingerprintService = fingerprintService;
+        this.conversionService = conversionService;
+        this.acoustIdClient = acoustIdClient;
     }
 
     @Override
     public void afterConnectionEstablished(WebSocketSession session) throws Exception {
-        System.out.println("=== WebSocket Connection Established ===");
-        System.out.println("Session ID: " + session.getId());
-        System.out.println("Remote Address: " + session.getRemoteAddress());
-        System.out.println("Is Open: " + session.isOpen());
+        Log.info("=== WebSocket Connection Established ===");
+        Log.info("Session ID: {}", session.getId());
+        Log.info("Remote Address: {}", session.getRemoteAddress());
+        Log.info("Is Open: {}", session.isOpen());
 
         try {
             SessionAudioBuffer buffer = new SessionAudioBuffer(session);
             sessions.put(session.getId(), buffer);
-            System.out.println("✓ Created and stored buffer for session: " + session.getId());
+            Log.info("✓ Created and stored buffer for session: {}", session.getId());
 
             // Notify client that connection is ready
             if (session.isOpen()) {
@@ -58,14 +72,13 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
                         "message", "Ready to receive audio"
                 ));
                 session.sendMessage(new TextMessage(message));
-                System.out.println("✓ Sent 'connected' message to client");
+                Log.info("✓ Sent 'connected' message to client");
             }
 
-            System.out.println("✓ Connection fully established. Active sessions: " + sessions.size());
+            Log.info("✓ Connection fully established. Active sessions: {}", sessions.size());
 
         } catch (Exception e) {
-            System.err.println("❌ Error in afterConnectionEstablished: " + e.getMessage());
-            e.printStackTrace();
+            Log.error("❌ Error in afterConnectionEstablished: {}", e.getMessage(), e);
             throw e;
         }
     }
@@ -75,7 +88,7 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
         SessionAudioBuffer buffer = sessions.get(session.getId());
 
         if (buffer == null) {
-            System.err.println("⚠️  No buffer for session " + session.getId() + ", creating new one");
+            Log.error("⚠️  No buffer for session {}, creating new one", session.getId());
             buffer = new SessionAudioBuffer(session);
             sessions.put(session.getId(), buffer);
         }
@@ -83,7 +96,7 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
         ByteBuffer payload = message.getPayload();
         int bytesReceived = payload.remaining();
 
-        System.out.println("📦 Received " + bytesReceived + " bytes from session: " + session.getId());
+        Log.info("📦 Received {} bytes from session: {}", bytesReceived, session.getId());
 
         // Append audio chunk to buffer
         buffer.append(payload);
@@ -102,7 +115,7 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
     @Override
     protected void handleTextMessage(WebSocketSession session, TextMessage message) {
         String payload = message.getPayload();
-        System.out.println("📨 Received text message from " + session.getId() + ": " + payload);
+        Log.info("📨 Received text message from {}: {}", session.getId(), payload);
 
         try {
             @SuppressWarnings("unchecked")
@@ -110,7 +123,7 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
             String type = (String) json.get("type");
 
             if ("done".equals(type)) {
-                System.out.println("🎵 Client finished recording: " + session.getId());
+                Log.info("🎵 Client finished recording: {}", session.getId());
                 handleRecordingComplete(session);
             } else if ("ping".equals(type)) {
                 // Keep-alive ping
@@ -120,12 +133,11 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
                     )));
                 }
             } else {
-                System.err.println("⚠️  Unknown message type: " + type);
+                Log.error("⚠️  Unknown message type: {}", type);
             }
 
         } catch (Exception e) {
-            System.err.println("❌ Error parsing text message: " + e.getMessage());
-            e.printStackTrace();
+            Log.error("❌ Error parsing text message: {}", e.getMessage(), e);
             sendError(session, "Invalid message format");
         }
     }
@@ -134,13 +146,13 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
         SessionAudioBuffer buffer = sessions.get(session.getId());
 
         if (buffer == null) {
-            System.err.println("⚠️  No buffer found for session: " + session.getId());
+            Log.error("⚠️  No buffer found for session: {}", session.getId());
             sendError(session, "No audio data received");
             return;
         }
 
-        System.out.println("🎵 Starting audio processing for session: " + session.getId());
-        System.out.println("Total bytes received: " + buffer.getTotalBytes());
+        Log.info("🎵 Starting audio processing for session: {}", session.getId());
+        Log.info("Total bytes received: {}", buffer.getTotalBytes());
 
         // Send "processing" status to client
         try {
@@ -150,16 +162,18 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
             ));
             if (session.isOpen()) {
                 session.sendMessage(new TextMessage(processingMsg));
-                System.out.println("✓ Sent 'processing' message to client");
+                Log.info("✓ Sent 'processing' message to client");
             }
         } catch (Exception e) {
-            System.err.println("❌ Error sending processing message: " + e.getMessage());
+            Log.error("❌ Error sending processing message: {}", e.getMessage(), e);
         }
 
         // Submit processing task
-        AudioProcessingTask task = new AudioProcessingTask(buffer, fingerprintService);
+        AudioProcessingTask task = new AudioProcessingTask(
+                buffer, fingerprintService, conversionService, acoustIdClient
+        );
         processingPool.submit(task);
-        System.out.println("✓ Submitted processing task to thread pool");
+        Log.info("✓ Submitted processing task to thread pool");
     }
 
     private void sendError(WebSocketSession session, String errorMessage) {
@@ -170,10 +184,10 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
                         "message", errorMessage
                 ));
                 session.sendMessage(new TextMessage(error));
-                System.err.println("❌ Sent error to session " + session.getId() + ": " + errorMessage);
+                Log.error("❌ Sent error to session {}: {}", session.getId(), errorMessage);
             }
         } catch (Exception e) {
-            System.err.println("❌ Failed to send error message: " + e.getMessage());
+            Log.error("❌ Failed to send error message: {}", e.getMessage(), e);
         }
     }
 
@@ -183,21 +197,20 @@ public class AudioSocketConnectionHandler extends BinaryWebSocketHandler {
 
         if (buffer != null) {
             buffer.closeSilently();
-            System.out.println("✗ Session closed: " + session.getId() +
-                    " - Status: " + status.getCode() +
-                    " - Reason: " + (status.getReason() != null ? status.getReason() : "N/A"));
+            Log.info("✗ Session closed: {} - Status: {} - Reason: {}",
+                    session.getId(), status.getCode(),
+                    status.getReason() != null ? status.getReason() : "N/A");
         } else {
-            System.out.println("✗ Session closed (no buffer): " + session.getId() +
-                    " - Status: " + status.getCode());
+            Log.info("✗ Session closed (no buffer): {} - Status: {}",
+                    session.getId(), status.getCode());
         }
 
-        System.out.println("Remaining active sessions: " + sessions.size());
+        Log.info("Remaining active sessions: {}", sessions.size());
     }
 
     @Override
     public void handleTransportError(WebSocketSession session, Throwable exception) throws Exception {
-        System.err.println("❌ Transport error for session " + session.getId() + ": " + exception.getMessage());
-        exception.printStackTrace();
+        Log.error("❌ Transport error for session {}: {}", session.getId(), exception.getMessage(), exception);
 
         SessionAudioBuffer buffer = sessions.remove(session.getId());
         if (buffer != null) {
