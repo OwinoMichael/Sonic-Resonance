@@ -7,7 +7,7 @@ interface ListeningPageProps {
 }
 
 export default function ListeningPage({ navigate }: ListeningPageProps) {
-  const [timeRemaining, setTimeRemaining] = useState(20); // Changed to 20 seconds
+  const [timeRemaining, setTimeRemaining] = useState(10); // Changed to 20 seconds
   const [statusMessage, setStatusMessage] = useState('Listening to audio...');
 
   useEffect(() => {

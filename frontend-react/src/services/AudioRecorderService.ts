@@ -37,7 +37,7 @@ export class AudioRecorderService {
   private isRecording: boolean = false;
   private callbacks: RecordingCallbacks = {};
 
-  constructor(websocketUrl: string, recordingDuration: number = 20000) { // Changed to 20 seconds (20000ms)
+  constructor(websocketUrl: string, recordingDuration: number = 10000) {// Changed to 20 seconds (20000ms)
     this.websocketUrl = websocketUrl;
     this.recordingDuration = recordingDuration;
   }

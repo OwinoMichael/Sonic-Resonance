@@ -11,7 +11,7 @@ interface HomePageProps {
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/audio';
 
 export default function HomePage({ navigate }: HomePageProps) {
-  const [recorder] = useState(() => new AudioRecorderService(WS_URL, 20000)); // Changed to 20000ms (20 seconds)
+  const [recorder] = useState(() => new AudioRecorderService(WS_URL, 10000)); // Changed to 20000ms (20 seconds)
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
@@ -25,8 +25,8 @@ export default function HomePage({ navigate }: HomePageProps) {
         sessionStorage.setItem('timeRemaining', String(timeRemaining));
         sessionStorage.setItem('status', 'Listening...');
         
-        // Navigate when recording starts (timeRemaining will be 20)
-        if (timeRemaining === 20) { // Changed from 10 to 20
+        // Navigate when recording starts (timeRemaining will be 10)
+        if (timeRemaining === 10) { 
           navigate('/listening');
         }
       },
