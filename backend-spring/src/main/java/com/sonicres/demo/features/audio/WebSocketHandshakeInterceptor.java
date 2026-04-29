@@ -1,13 +1,16 @@
 package com.sonicres.demo.features.audio;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.http.server.ServerHttpRequest;
 import org.springframework.http.server.ServerHttpResponse;
 import org.springframework.web.socket.WebSocketHandler;
 import org.springframework.web.socket.server.HandshakeInterceptor;
-
 import java.util.Map;
 
-public class WebSocketHandshakeInterceptor implements HandshakeInterceptor{
+public class WebSocketHandshakeInterceptor implements HandshakeInterceptor {
+
+    private static final Logger logger = LoggerFactory.getLogger(WebSocketHandshakeInterceptor.class);
 
     @Override
     public boolean beforeHandshake(
@@ -16,12 +19,11 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor{
             WebSocketHandler wsHandler,
             Map<String, Object> attributes) throws Exception {
 
-        System.out.println("🤝 WebSocket Handshake - Before");
-        System.out.println("URI: " + request.getURI());
-        System.out.println("Headers: " + request.getHeaders());
-        System.out.println("Remote Address: " + request.getRemoteAddress());
+        logger.debug("WebSocket Handshake - Before");
+        logger.debug("URI: {}", request.getURI());
+        logger.debug("Remote Address: {}", request.getRemoteAddress());
 
-        return true;  // Allow handshake
+        return true;
     }
 
     @Override
@@ -31,12 +33,10 @@ public class WebSocketHandshakeInterceptor implements HandshakeInterceptor{
             WebSocketHandler wsHandler,
             Exception exception) {
 
-        System.out.println("🤝 WebSocket Handshake - After");
         if (exception != null) {
-            System.err.println("❌ Handshake error: " + exception.getMessage());
-            exception.printStackTrace();
+            logger.error("Handshake error: {}", exception.getMessage(), exception);
         } else {
-            System.out.println("✅ Handshake successful");
+            logger.debug("Handshake successful");
         }
     }
 }

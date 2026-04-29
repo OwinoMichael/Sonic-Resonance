@@ -16,8 +16,6 @@ import java.util.stream.Collectors;
 @Service
 public class ChromaprintFingerprintService implements FingerprintService {
 
-    private static final Logger log = LoggerFactory.getLogger(ChromaprintFingerprintService.class);
-    private final ObjectMapper objectMapper = new ObjectMapper();
     private final FingerprintCacheRepository cacheRepository;
     //private final AcoustIdClient acoustIdClient;
     private final ArcCloudClient acrCloudClient;
@@ -47,73 +45,73 @@ public class ChromaprintFingerprintService implements FingerprintService {
         return matches;
     }
 
-    private FingerprintData generateFingerprintData(File wavFile) throws Exception {
+//    private FingerprintData generateFingerprintData(File wavFile) throws Exception {
+//
+//        ProcessBuilder pb = new ProcessBuilder(
+//                "fpcalc",
+//                "-json",
+//                wavFile.getAbsolutePath()
+//        );
+//
+//        pb.redirectErrorStream(true);
+//        Process process = pb.start();
+//
+//        String output;
+//        try (BufferedReader reader = new BufferedReader(
+//                new InputStreamReader(process.getInputStream()))) {
+//
+//            output = reader.lines().collect(Collectors.joining("\n"));
+//        }
+//
+//        int exitCode = process.waitFor();
+//
+//        if (exitCode != 0) {
+//            throw new RuntimeException("fpcalc failed: " + output);
+//        }
+//
+//        Map<String, Object> json =
+//                new ObjectMapper().readValue(output, Map.class);
+//
+//        String fingerprint = (String) json.get("fingerprint");
+//        int duration = ((Number) json.get("duration")).intValue();
+//
+//        return new FingerprintData(fingerprint, duration);
+//    }
 
-        ProcessBuilder pb = new ProcessBuilder(
-                "fpcalc",
-                "-json",
-                wavFile.getAbsolutePath()
-        );
-
-        pb.redirectErrorStream(true);
-        Process process = pb.start();
-
-        String output;
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
-
-            output = reader.lines().collect(Collectors.joining("\n"));
-        }
-
-        int exitCode = process.waitFor();
-
-        if (exitCode != 0) {
-            throw new RuntimeException("fpcalc failed: " + output);
-        }
-
-        Map<String, Object> json =
-                new ObjectMapper().readValue(output, Map.class);
-
-        String fingerprint = (String) json.get("fingerprint");
-        int duration = ((Number) json.get("duration")).intValue();
-
-        return new FingerprintData(fingerprint, duration);
-    }
-
-    private static class FingerprintData {
-        String fingerprint;
-        int duration;
-
-        FingerprintData(String fingerprint, int duration) {
-            this.fingerprint = fingerprint;
-            this.duration = duration;
-        }
-    }
-
-    private FpcalcResult runFpcalc(File wavFile) throws IOException {
-        ProcessBuilder pb = new ProcessBuilder(
-                "fpcalc",
-                "-json",
-                wavFile.getAbsolutePath()
-        );
-
-        Process process = pb.start();
-
-        String output;
-        try (BufferedReader reader = new BufferedReader(
-                new InputStreamReader(process.getInputStream()))) {
-            output = reader.lines().collect(Collectors.joining());
-        }
-
-        try {
-            process.waitFor();
-        } catch (InterruptedException e) {
-            throw new RuntimeException(e);
-        }
-
-        ObjectMapper mapper = new ObjectMapper();
-        return mapper.readValue(output, FpcalcResult.class);
-    }
+//    private static class FingerprintData {
+//        String fingerprint;
+//        int duration;
+//
+//        FingerprintData(String fingerprint, int duration) {
+//            this.fingerprint = fingerprint;
+//            this.duration = duration;
+//        }
+//    }
+//
+//    private FpcalcResult runFpcalc(File wavFile) throws IOException {
+//        ProcessBuilder pb = new ProcessBuilder(
+//                "fpcalc",
+//                "-json",
+//                wavFile.getAbsolutePath()
+//        );
+//
+//        Process process = pb.start();
+//
+//        String output;
+//        try (BufferedReader reader = new BufferedReader(
+//                new InputStreamReader(process.getInputStream()))) {
+//            output = reader.lines().collect(Collectors.joining());
+//        }
+//
+//        try {
+//            process.waitFor();
+//        } catch (InterruptedException e) {
+//            throw new RuntimeException(e);
+//        }
+//
+//        ObjectMapper mapper = new ObjectMapper();
+//        return mapper.readValue(output, FpcalcResult.class);
+//    }
 }
 
 
