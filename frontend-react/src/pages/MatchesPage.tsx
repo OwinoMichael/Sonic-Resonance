@@ -35,7 +35,8 @@ export default function MatchesPage({ navigate }: MatchesPageProps) {
         const parsed = JSON.parse(storedMatches);
         setMatches(parsed);
       } catch (error) {
-        console.error("Error parsing match results:", error);
+        //console.error("Error parsing match results:", error);
+        console.error("", error);
         setMatches(getDemoMatches());
       }
     } else {

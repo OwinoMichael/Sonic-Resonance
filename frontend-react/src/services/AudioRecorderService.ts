@@ -54,7 +54,7 @@ export class AudioRecorderService {
    */
   public async startRecording(): Promise<void> {
     if (this.isRecording) {
-      console.warn('Already recording');
+      //console.warn('Already recording');
       return;
     }
 
@@ -108,7 +108,7 @@ export class AudioRecorderService {
       }, this.recordingDuration);
 
     } catch (error) {
-      console.error('Error starting recording:', error);
+      //console.error('Error starting recording:', error);
       this.cleanup();
       this.callbacks.onError?.(`Failed to start recording: ${error}`);
       throw error;
@@ -150,7 +150,7 @@ export class AudioRecorderService {
         this.websocket.binaryType = 'blob';
 
         this.websocket.onopen = () => {
-          console.log('✓ WebSocket connected');
+          //console.log('✓ WebSocket connected');
           resolve();
         };
 
@@ -159,12 +159,14 @@ export class AudioRecorderService {
         };
 
         this.websocket.onerror = (error) => {
-          console.error('WebSocket error:', error);
+          //console.error('WebSocket error:', error);
+          console.error("", error)
           reject(new Error('WebSocket connection failed'));
         };
 
         this.websocket.onclose = (event) => {
-          console.log('WebSocket closed:', event.code, event.reason);
+          //console.log('WebSocket closed:', event.code, event.reason);
+          console.log('', event.code, event.reason);
           this.cleanup();
         };
 
@@ -190,22 +192,22 @@ export class AudioRecorderService {
 
       switch (message.type) {
         case 'connected':
-          console.log('Server ready:', message.sessionId);
+          //console.log('Server ready:', message.sessionId);
           this.callbacks.onConnected?.();
           break;
 
         case 'ack':
           // Server acknowledged audio chunk
-          console.log(`Received ${message.bytes} bytes`);
+          //console.log(`Received ${message.bytes} bytes`);
           break;
 
         case 'processing':
-          console.log('Server processing audio...');
+          //console.log('Server processing audio...');
           this.callbacks.onProcessing?.();
           break;
 
         case 'result':
-          console.log('✅ Received result:', message);
+          //console.log('✅ Received result:', message);
           this.callbacks.onResult?.(message as FingerprintResult);
           this.callbacks.onComplete?.();
           // Cleanup after result received
@@ -213,7 +215,7 @@ export class AudioRecorderService {
           break;
 
         case 'no-match':
-          console.log('⚠️  No match found');
+          //console.log('⚠️  No match found');
           this.callbacks.onResult?.({
             matches: [],
             message: message.message || 'No match found',
@@ -224,16 +226,17 @@ export class AudioRecorderService {
           break;
 
         case 'error':
-          console.error('❌ Server error:', message.message);
+          //console.error('❌ Server error:', message.message);
           this.callbacks.onError?.(message.message);
           this.cleanup();
           break;
 
         default:
-          console.warn('Unknown message type:', message.type);
+          //console.warn('Unknown message type:', message.type);
       }
     } catch (error) {
-      console.error('Error parsing WebSocket message:', error);
+      //console.error('Error parsing WebSocket message:', error);
+      console.error('', error);
     }
   }
 
@@ -241,16 +244,16 @@ export class AudioRecorderService {
    * Handle recording completion
    */
   private handleRecordingComplete(): void {
-    console.log('🎵 Recording complete, sending "done" signal');
+    //console.log('🎵 Recording complete, sending "done" signal');
 
     // Send "done" message to server
     if (this.websocket?.readyState === WebSocket.OPEN) {
       const doneMessage = JSON.stringify({ type: 'done' });
-      console.log('📤 Sending:', doneMessage);
+      //console.log('📤 Sending:', doneMessage);
       this.websocket.send(doneMessage);
     } else {
-      console.error('❌ WebSocket not open when trying to send "done" signal');
-      console.error('WebSocket state:', this.websocket?.readyState);
+      //console.error('❌ WebSocket not open when trying to send "done" signal');
+      //console.error('WebSocket state:', this.websocket?.readyState);
       this.callbacks.onError?.('Connection lost during recording');
     }
 
@@ -258,7 +261,7 @@ export class AudioRecorderService {
     if (this.audioStream) {
       this.audioStream.getTracks().forEach(track => {
         track.stop();
-        console.log('🎤 Stopped audio track');
+        //console.log('🎤 Stopped audio track');
       });
       this.audioStream = null;
     }
@@ -296,7 +299,7 @@ export class AudioRecorderService {
 
     for (const type of types) {
       if (MediaRecorder.isTypeSupported(type)) {
-        console.log('Using MIME type:', type);
+        //console.log('Using MIME type:', type);
         return type;
       }
     }
@@ -308,30 +311,30 @@ export class AudioRecorderService {
    * Clean up resources
    */
   private cleanup(): void {
-    console.log('🧹 Cleanup called');
+    //console.log('🧹 Cleanup called');
     
     if (this.recordingTimer) {
       clearTimeout(this.recordingTimer);
       this.recordingTimer = null;
-      console.log('   - Cleared recording timer');
+      //console.log('   - Cleared recording timer');
     }
 
     if (this.countdownTimer) {
       clearInterval(this.countdownTimer);
       this.countdownTimer = null;
-      console.log('   - Cleared countdown timer');
+      //console.log('   - Cleared countdown timer');
     }
 
     if (this.mediaRecorder && this.mediaRecorder.state !== 'inactive') {
       this.mediaRecorder.stop();
-      console.log('   - Stopped MediaRecorder');
+      //console.log('   - Stopped MediaRecorder');
     }
     this.mediaRecorder = null;
 
     if (this.audioStream) {
       this.audioStream.getTracks().forEach(track => track.stop());
       this.audioStream = null;
-      console.log('   - Stopped audio stream');
+      //console.log('   - Stopped audio stream');
     }
 
     // IMPORTANT: Only close WebSocket if we're done processing
@@ -339,16 +342,16 @@ export class AudioRecorderService {
     if (this.websocket && !this.isRecording) {
       if (this.websocket.readyState === WebSocket.OPEN || 
           this.websocket.readyState === WebSocket.CONNECTING) {
-        console.log('   - Closing WebSocket');
+        //console.log('   - Closing WebSocket');
         this.websocket.close();
       }
       this.websocket = null;
     } else if (this.websocket && this.isRecording) {
-      console.log('   - Keeping WebSocket open (still recording)');
+      //console.log('   - Keeping WebSocket open (still recording)');
     }
 
     this.isRecording = false;
-    console.log('✅ Cleanup complete');
+    //console.log('✅ Cleanup complete');
   }
 
   /**

@@ -7,18 +7,18 @@ interface HomePageProps {
   navigate: (path: string) => void;
 }
 
-// WebSocket URL - adjust based on your environment
+
 const WS_URL = import.meta.env.VITE_WS_URL || 'ws://localhost:8080/ws/audio';
 
 export default function HomePage({ navigate }: HomePageProps) {
-  const [recorder] = useState(() => new AudioRecorderService(WS_URL, 10000)); // Changed to 20000ms (20 seconds)
+  const [recorder] = useState(() => new AudioRecorderService(WS_URL, 10000)); // 10s recording
   const [isStarting, setIsStarting] = useState(false);
 
   useEffect(() => {
     // Set up callbacks for the recorder
     recorder.setCallbacks({
       onConnected: () => {
-        console.log('✓ Connected to audio server');
+        //console.log('✓ Connected to audio server');
         setIsStarting(false);
       },
       onRecording: (timeRemaining) => {
@@ -35,7 +35,7 @@ export default function HomePage({ navigate }: HomePageProps) {
         sessionStorage.setItem('status', 'Analyzing audio...');
       },
       onResult: (result: FingerprintResult) => {
-        console.log(result)
+        //console.log(result)
         if (result.matches && result.matches.length > 0) {
           const formatted = result.matches.map((m) => ({
             title: m.title,
@@ -54,20 +54,20 @@ export default function HomePage({ navigate }: HomePageProps) {
         }
       },
       onError: (error) => {
-        console.error('Recording error:', error);
+        //console.error('Recording error:', error);
         alert(`Error: ${error}`);
         setIsStarting(false);
         navigate('/');
       },
       onComplete: () => {
-        console.log('Recording complete');
+        //console.log('Recording complete');
         setIsStarting(false);
       }
     });
 
     // Cleanup on unmount - but don't destroy if recording
     return () => {
-      console.log('HomePage unmounting...');
+      //console.log('HomePage unmounting...');
       // Only destroy if not recording
       if (!recorder.getIsRecording()) {
         recorder.destroy();
@@ -83,7 +83,8 @@ export default function HomePage({ navigate }: HomePageProps) {
     try {
       await recorder.startRecording();
     } catch (error) {
-      console.error('Failed to start recording:', error);
+      //console.error('Failed to start recording:', error);
+      console.error('', error);
       setIsStarting(false);
       alert('Failed to start recording. Please check microphone permissions.');
     }
