@@ -13,10 +13,14 @@ COPY . .
 # Build args for environment variables
 ARG VITE_WS_URL
 ARG VITE_API_URL
+ARG VITE_SPOTIFY_CLIENT_ID
+ARG VITE_SPOTIFY_CLIENT_SECRE
 
 # Set environment variables for build
 ENV VITE_WS_URL=$VITE_WS_URL
 ENV VITE_API_URL=$VITE_API_URL
+ENV VITE_SPOTIFY_CLIENT_ID=$VITE_SPOTIFY_CLIENT_ID
+ENV VITE_SPOTIFY_CLIENT_SECRET=$VITE_SPOTIFY_CLIENT_SECRET
 
 # Build (ignore TS errors)
 RUN npm run build || npx vite build --mode production

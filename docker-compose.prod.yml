@@ -34,6 +34,9 @@ services:
       - ACRCLOUD_ACCESS_KEY=${ACCESS_KEY}
       - ACRCLOUD_ACCESS_SECRET=${ACCESS_SECRET}
       - ACRCLOUD_HOST=${ACRCLOUD_HOST}
+      - VITE_SPOTIFY_CLIENT_ID=${VITE_SPOTIFY_CLIENT_ID}
+      - VITE_SPOTIFY_CLIENT_SECRET=${VITE_SPOTIFY_CLIENT_SECRET}
+      
     networks:
       - app-network
     healthcheck:
@@ -50,6 +53,8 @@ services:
       args:
         VITE_WS_URL: ${VITE_WS_URL}
         VITE_API_URL: ${VITE_API_URL}
+        VITE_SPOTIFY_CLIENT_ID: ${VITE_SPOTIFY_CLIENT_ID}
+        VITE_SPOTIFY_CLIENT_SECRET: ${VITE_SPOTIFY_CLIENT_SECRET}
     container_name: react-app-prod
     restart: unless-stopped
     ports:
