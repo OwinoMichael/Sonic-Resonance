@@ -78,20 +78,32 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
   const fetchSpotifyFeatures = async (trackId: string) => {
     setFeaturesLoading(true);
     try {
-      // Get access token
+      // ✅ Correct Client Credentials flow
+      const credentials = btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`);
+      
       const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
-        body: `grant_type=client_credentials&client_id=${SPOTIFY_CLIENT_ID}&client_secret=${SPOTIFY_CLIENT_SECRET}`,
+        headers: {
+          'Content-Type': 'application/x-www-form-urlencoded',
+          'Authorization': `Basic ${credentials}`,   // ← this was missing
+        },
+        body: 'grant_type=client_credentials',        // ← simplified body
       });
+
       const tokenData = await tokenRes.json();
       const token = tokenData.access_token;
 
-      // Fetch audio features
+      if (!token) {
+        console.error('No token received:', tokenData);
+        setFeaturesLoading(false);
+        return;
+      }
+
       const featRes = await fetch(
         `https://api.spotify.com/v1/audio-features/${trackId}`,
         { headers: { Authorization: `Bearer ${token}` } }
       );
+
       if (featRes.ok) {
         const feat = await featRes.json();
         setFeatures({
@@ -103,7 +115,8 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
           speechiness: feat.speechiness,
         });
       }
-    } catch {
+    } catch (e) {
+      console.error('Spotify fetch error:', e);
       setFeatures(null);
     }
     setFeaturesLoading(false);
@@ -378,6 +391,20 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
                   overflowY: 'auto',
                   paddingRight: '8px',
                 }}>
+                <div
+                className="lyrics-scroll"
+                style={{
+                  whiteSpace: 'pre-line',
+                  lineHeight: '1.9',
+                  color: 'rgba(255,255,255,0.85)',
+                  fontSize: '15px',
+                  maxHeight: '420px',
+                  overflowY: 'auto',
+                  paddingRight: '8px',
+                }}
+              >
+                {lyrics}
+              </div>
                   {lyrics}
                 </div>
               ) : (
