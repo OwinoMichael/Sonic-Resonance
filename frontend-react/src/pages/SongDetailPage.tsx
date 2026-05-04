@@ -77,6 +77,13 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
 
   const fetchSpotifyFeatures = async (trackId: string) => {
     setFeaturesLoading(true);
+
+    console.log('Track ID:', trackId);
+    console.log('Client ID:', SPOTIFY_CLIENT_ID);
+    console.log('Client Secret length:', SPOTIFY_CLIENT_SECRET?.length);
+    console.log('Credentials b64:', btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`));
+
+
     try {
       // ✅ Correct Client Credentials flow
       const credentials = btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`);
