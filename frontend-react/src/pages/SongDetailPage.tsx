@@ -1,4 +1,4 @@
-import React, { useEffect, useState, useRef } from 'react';
+import React, { useEffect, useState } from 'react';
 import { X, Music2, ExternalLink, Mic2, Disc3 } from 'lucide-react';
 import AppLayout from '../components/AppLayout';
 
@@ -7,12 +7,12 @@ interface SongDetailPageProps {
 }
 
 interface AudioFeatures {
-  danceability: number;
-  energy: number;
-  valence: number;
-  acousticness: number;
-  instrumentalness: number;
-  speechiness: number;
+  bpm: number;
+  rank: number;
+  duration: number;
+  explicit: boolean;
+  preview: string;
+  gain: number;
 }
 
 interface SongDetail {
@@ -28,11 +28,7 @@ interface SongDetail {
     deezer?: string;
     youtube?: string;
   };
-  spotifyTrackId?: string;
 }
-
-const SPOTIFY_CLIENT_ID = import.meta.env.VITE_SPOTIFY_CLIENT_ID || '';
-const SPOTIFY_CLIENT_SECRET = import.meta.env.VITE_SPOTIFY_CLIENT_SECRET || '';
 
 export default function SongDetailPage({ navigate }: SongDetailPageProps) {
   const [song, setSong] = useState<SongDetail | null>(null);
@@ -41,7 +37,6 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
   const [features, setFeatures] = useState<AudioFeatures | null>(null);
   const [featuresLoading, setFeaturesLoading] = useState(false);
   const [activeTab, setActiveTab] = useState<'lyrics' | 'vibe'>('lyrics');
-  const canvasRef = useRef<HTMLCanvasElement>(null);
 
   useEffect(() => {
     const stored = sessionStorage.getItem('selectedSong');
@@ -49,9 +44,9 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
       const parsed = JSON.parse(stored);
       setSong(parsed);
       fetchLyrics(parsed.artist, parsed.title);
-      if (parsed.links?.spotify) {
-        const trackId = parsed.links.spotify.split('/track/')[1];
-        if (trackId) fetchSpotifyFeatures(trackId);
+      if (parsed.links?.deezer) {
+        const deezerTrackId = parsed.links.deezer.split('/track/')[1];
+        if (deezerTrackId) fetchDeezerFeatures(deezerTrackId);
       }
     }
   }, []);
@@ -59,7 +54,6 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
   const fetchLyrics = async (artist: string, title: string) => {
     setLyricsLoading(true);
     try {
-      // Using lyrics.ovh - free, no auth needed
       const res = await fetch(
         `https://api.lyrics.ovh/v1/${encodeURIComponent(artist)}/${encodeURIComponent(title)}`
       );
@@ -75,159 +69,25 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
     setLyricsLoading(false);
   };
 
-  const fetchSpotifyFeatures = async (trackId: string) => {
+  const fetchDeezerFeatures = async (deezerTrackId: string) => {
     setFeaturesLoading(true);
-
-    console.log('Track ID:', trackId);
-    console.log('Client ID:', SPOTIFY_CLIENT_ID);
-    console.log('Client Secret length:', SPOTIFY_CLIENT_SECRET?.length);
-    console.log('Credentials b64:', btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`));
-
-
     try {
-      // ✅ Correct Client Credentials flow
-      const credentials = btoa(`${SPOTIFY_CLIENT_ID}:${SPOTIFY_CLIENT_SECRET}`);
-      
-      const tokenRes = await fetch('https://accounts.spotify.com/api/token', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/x-www-form-urlencoded',
-          'Authorization': `Basic ${credentials}`,   // ← this was missing
-        },
-        body: 'grant_type=client_credentials',        // ← simplified body
-      });
-
-      const tokenData = await tokenRes.json();
-      const token = tokenData.access_token;
-
-      if (!token) {
-        console.error('No token received:', tokenData);
-        setFeaturesLoading(false);
-        return;
-      }
-
-      const featRes = await fetch(
-        `https://api.spotify.com/v1/audio-features/${trackId}`,
-        { headers: { Authorization: `Bearer ${token}` } }
-      );
-
-      if (featRes.ok) {
-        const feat = await featRes.json();
+      const res = await fetch(`https://api.deezer.com/track/${deezerTrackId}`);
+      if (res.ok) {
+        const data = await res.json();
         setFeatures({
-          danceability: feat.danceability,
-          energy: feat.energy,
-          valence: feat.valence,
-          acousticness: feat.acousticness,
-          instrumentalness: feat.instrumentalness,
-          speechiness: feat.speechiness,
+          bpm: data.bpm,
+          rank: data.rank,
+          duration: data.duration,
+          explicit: data.explicit_lyrics,
+          preview: data.preview,
+          gain: data.gain,
         });
       }
-    } catch (e) {
-      console.error('Spotify fetch error:', e);
+    } catch {
       setFeatures(null);
     }
     setFeaturesLoading(false);
-  };
-
-  useEffect(() => {
-    if (features && canvasRef.current && activeTab === 'vibe') {
-      drawRadar(features);
-    }
-  }, [features, activeTab]);
-
-  const drawRadar = (f: AudioFeatures) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-    const ctx = canvas.getContext('2d');
-    if (!ctx) return;
-
-    const size = 280;
-    canvas.width = size;
-    canvas.height = size;
-    const cx = size / 2;
-    const cy = size / 2;
-    const radius = 100;
-
-    const labels = ['Dance', 'Energy', 'Vibe', 'Acoustic', 'Instrumental', 'Speech'];
-    const values = [
-      f.danceability,
-      f.energy,
-      f.valence,
-      f.acousticness,
-      f.instrumentalness,
-      f.speechiness,
-    ];
-    const n = labels.length;
-
-    ctx.clearRect(0, 0, size, size);
-
-    // Draw grid circles
-    for (let r = 1; r <= 4; r++) {
-      ctx.beginPath();
-      for (let i = 0; i < n; i++) {
-        const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-        const x = cx + (radius * r) / 4 * Math.cos(angle);
-        const y = cy + (radius * r) / 4 * Math.sin(angle);
-        if (i === 0) ctx.moveTo(x, y);
-        else ctx.lineTo(x, y);
-      }
-      ctx.closePath();
-      ctx.strokeStyle = 'rgba(255,255,255,0.08)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-
-    // Draw axis lines
-    for (let i = 0; i < n; i++) {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-      ctx.beginPath();
-      ctx.moveTo(cx, cy);
-      ctx.lineTo(cx + radius * Math.cos(angle), cy + radius * Math.sin(angle));
-      ctx.strokeStyle = 'rgba(255,255,255,0.1)';
-      ctx.lineWidth = 1;
-      ctx.stroke();
-    }
-
-    // Draw data polygon
-    ctx.beginPath();
-    for (let i = 0; i < n; i++) {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-      const r = radius * values[i];
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      if (i === 0) ctx.moveTo(x, y);
-      else ctx.lineTo(x, y);
-    }
-    ctx.closePath();
-    ctx.fillStyle = 'rgba(253, 185, 36, 0.25)';
-    ctx.fill();
-    ctx.strokeStyle = 'rgba(253, 185, 36, 0.8)';
-    ctx.lineWidth = 2;
-    ctx.stroke();
-
-    // Draw data points
-    for (let i = 0; i < n; i++) {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-      const r = radius * values[i];
-      const x = cx + r * Math.cos(angle);
-      const y = cy + r * Math.sin(angle);
-      ctx.beginPath();
-      ctx.arc(x, y, 4, 0, Math.PI * 2);
-      ctx.fillStyle = '#fdb924';
-      ctx.fill();
-    }
-
-    // Draw labels
-    ctx.font = '11px system-ui';
-    ctx.fillStyle = 'rgba(255,255,255,0.6)';
-    ctx.textAlign = 'center';
-    for (let i = 0; i < n; i++) {
-      const angle = (Math.PI * 2 * i) / n - Math.PI / 2;
-      const labelR = radius + 20;
-      const x = cx + labelR * Math.cos(angle);
-      const y = cy + labelR * Math.sin(angle);
-      ctx.fillText(labels[i], x, y + 4);
-    }
   };
 
   if (!song) {
@@ -242,18 +102,9 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
     );
   }
 
-  const vibeLabel = features
-    ? features.valence > 0.6
-      ? '😄 Happy & Upbeat'
-      : features.valence > 0.4
-      ? '😌 Chill & Neutral'
-      : '😔 Melancholic'
-    : null;
-
   return (
     <AppLayout currentRoute="/" navigate={navigate}>
       <main className="matches-page">
-        {/* Header */}
         <div className="page-header">
           <button onClick={() => navigate('/matches')} className="back-btn">
             <X className="w-6 h-6" />
@@ -276,7 +127,6 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
             alignItems: 'center',
             marginBottom: '1.5rem',
           }}>
-            {/* Cover Art */}
             <div style={{ position: 'relative', flexShrink: 0 }}>
               {song.coverArtUrl ? (
                 <img src={song.coverArtUrl} alt={song.title} style={{
@@ -302,7 +152,6 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
               </div>
             </div>
 
-            {/* Info */}
             <div style={{ flex: 1, minWidth: 0 }}>
               <h3 style={{
                 fontSize: '1.4rem', fontWeight: 800, color: 'white',
@@ -315,7 +164,6 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
                 {song.year && <><span>•</span><span>{song.year}</span></>}
                 {song.duration && <><span>•</span><span>{song.duration}</span></>}
               </div>
-              {/* Platform links */}
               <div style={{ display: 'flex', gap: '8px', marginTop: '12px' }}>
                 {song.links?.spotify && (
                   <a href={song.links.spotify} target="_blank" rel="noreferrer" className="platform-link spotify">
@@ -343,16 +191,11 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
           </div>
 
           {/* Tabs */}
-          <div style={{
-            display: 'flex', gap: '8px', marginBottom: '1rem',
-          }}>
+          <div style={{ display: 'flex', gap: '8px', marginBottom: '1rem' }}>
             {(['lyrics', 'vibe'] as const).map((tab) => (
               <button
                 key={tab}
-                onClick={() => {
-                  setActiveTab(tab);
-                  if (tab === 'vibe' && features) setTimeout(() => drawRadar(features), 50);
-                }}
+                onClick={() => setActiveTab(tab)}
                 style={{
                   flex: 1, padding: '10px', borderRadius: '0.75rem',
                   border: activeTab === tab
@@ -367,7 +210,9 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
                   display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '6px',
                 }}
               >
-                {tab === 'lyrics' ? <Mic2 style={{ width: 16, height: 16 }} /> : <Music2 style={{ width: 16, height: 16 }} />}
+                {tab === 'lyrics'
+                  ? <Mic2 style={{ width: 16, height: 16 }} />
+                  : <Music2 style={{ width: 16, height: 16 }} />}
                 {tab === 'lyrics' ? 'Lyrics' : 'Vibe Check'}
               </button>
             ))}
@@ -389,29 +234,18 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
                   <p style={{ margin: 0 }}>Fetching lyrics...</p>
                 </div>
               ) : lyrics ? (
-                <div style={{
-                  whiteSpace: 'pre-line',
-                  lineHeight: '1.9',
-                  color: 'rgba(255,255,255,0.85)',
-                  fontSize: '15px',
-                  maxHeight: '420px',
-                  overflowY: 'auto',
-                  paddingRight: '8px',
-                }}>
                 <div
-                className="lyrics-scroll"
-                style={{
-                  whiteSpace: 'pre-line',
-                  lineHeight: '1.9',
-                  color: 'rgba(255,255,255,0.85)',
-                  fontSize: '15px',
-                  maxHeight: '420px',
-                  overflowY: 'auto',
-                  paddingRight: '8px',
-                }}
-              >
-                {lyrics}
-              </div>
+                  className="lyrics-scroll"
+                  style={{
+                    whiteSpace: 'pre-line',
+                    lineHeight: '1.9',
+                    color: 'rgba(255,255,255,0.85)',
+                    fontSize: '15px',
+                    maxHeight: '420px',
+                    overflowY: 'auto',
+                    paddingRight: '8px',
+                  }}
+                >
                   {lyrics}
                 </div>
               ) : (
@@ -449,60 +283,83 @@ export default function SongDetailPage({ navigate }: SongDetailPageProps) {
               {featuresLoading ? (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.3)' }}>
                   <Music2 style={{ width: 32, height: 32, margin: '0 auto 1rem', display: 'block', opacity: 0.4 }} />
-                  <p style={{ margin: 0 }}>Loading audio features...</p>
+                  <p style={{ margin: 0 }}>Loading track data...</p>
                 </div>
               ) : features ? (
                 <div>
-                  {vibeLabel && (
-                    <p style={{
-                      textAlign: 'center', fontSize: '1.1rem', fontWeight: 700,
-                      color: '#fdb924', marginBottom: '1rem', marginTop: 0,
-                    }}>{vibeLabel}</p>
+                  {features.preview && (
+                    <div style={{
+                      background: 'rgba(253, 185, 36, 0.08)',
+                      border: '1px solid rgba(253, 185, 36, 0.2)',
+                      borderRadius: '1rem',
+                      padding: '1rem',
+                      marginBottom: '1.5rem',
+                    }}>
+                      <p style={{ margin: 0, marginBottom: '8px', fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>
+                        30s Preview
+                      </p>
+                      <audio
+                        controls
+                        src={features.preview}
+                        style={{ width: '100%', height: '36px', accentColor: '#fdb924' }}
+                      />
+                    </div>
                   )}
-                  {/* Radar Chart */}
-                  <div style={{ display: 'flex', justifyContent: 'center', marginBottom: '1.5rem' }}>
-                    <canvas ref={canvasRef} style={{ maxWidth: '100%' }} />
-                  </div>
-                  {/* Feature bars */}
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px' }}>
+
+                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '12px', marginBottom: '1.5rem' }}>
                     {[
-                      { label: 'Danceability', value: features.danceability, color: '#fdb924' },
-                      { label: 'Energy', value: features.energy, color: '#4a8ca8' },
-                      { label: 'Happiness', value: features.valence, color: '#1ed760' },
-                      { label: 'Acousticness', value: features.acousticness, color: '#7ab5cf' },
-                      { label: 'Instrumental', value: features.instrumentalness, color: '#fec44d' },
-                      { label: 'Speechiness', value: features.speechiness, color: '#a8c5d1' },
-                    ].map((feat) => (
-                      <div key={feat.label}>
-                        <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '4px' }}>
-                          <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.5)' }}>{feat.label}</span>
-                          <span style={{ fontSize: '12px', fontWeight: 700, color: feat.color }}>
-                            {Math.round(feat.value * 100)}%
-                          </span>
-                        </div>
-                        <div style={{
-                          height: '4px', borderRadius: '2px',
-                          background: 'rgba(255,255,255,0.08)', overflow: 'hidden',
-                        }}>
-                          <div style={{
-                            height: '100%', borderRadius: '2px',
-                            background: feat.color,
-                            width: `${feat.value * 100}%`,
-                            transition: 'width 0.6s ease',
-                          }} />
-                        </div>
+                      { label: 'BPM', value: features.bpm ? Math.round(features.bpm) : '—' },
+                      { label: 'Duration', value: `${Math.floor(features.duration / 60)}:${String(features.duration % 60).padStart(2, '0')}` },
+                      { label: 'Deezer Rank', value: features.rank ? features.rank.toLocaleString() : '—' },
+                      { label: 'Explicit', value: features.explicit ? 'Yes' : 'No' },
+                    ].map((stat) => (
+                      <div key={stat.label} style={{
+                        background: 'rgba(255,255,255,0.04)',
+                        border: '1px solid rgba(255,255,255,0.08)',
+                        borderRadius: '0.75rem',
+                        padding: '1rem',
+                        textAlign: 'center',
+                      }}>
+                        <p style={{ margin: 0, fontSize: '11px', color: 'rgba(255,255,255,0.4)', marginBottom: '6px' }}>
+                          {stat.label}
+                        </p>
+                        <p style={{ margin: 0, fontSize: '1.3rem', fontWeight: 800, color: '#fdb924' }}>
+                          {stat.value}
+                        </p>
                       </div>
                     ))}
                   </div>
+
+                  {features.bpm > 0 && (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px' }}>
+                        <span style={{ fontSize: '12px', color: 'rgba(255,255,255,0.4)' }}>Tempo Vibe</span>
+                        <span style={{ fontSize: '12px', color: '#fdb924', fontWeight: 700 }}>
+                          {features.bpm < 80 ? '😌 Slow & Chill'
+                            : features.bpm < 120 ? '🎵 Mid Tempo'
+                            : features.bpm < 150 ? '🔥 Energetic'
+                            : '⚡ Fast & Intense'}
+                        </span>
+                      </div>
+                      <div style={{ height: '6px', borderRadius: '3px', background: 'rgba(255,255,255,0.08)', overflow: 'hidden' }}>
+                        <div style={{
+                          height: '100%', borderRadius: '3px',
+                          background: 'linear-gradient(to right, #4a8ca8, #fdb924)',
+                          width: `${Math.min((features.bpm / 200) * 100, 100)}%`,
+                          transition: 'width 0.6s ease',
+                        }} />
+                      </div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: '4px' }}>
+                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>60 BPM</span>
+                        <span style={{ fontSize: '10px', color: 'rgba(255,255,255,0.2)' }}>200 BPM</span>
+                      </div>
+                    </div>
+                  )}
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', padding: '3rem', color: 'rgba(255,255,255,0.3)' }}>
                   <Music2 style={{ width: 32, height: 32, margin: '0 auto 1rem', display: 'block', opacity: 0.3 }} />
-                  <p style={{ margin: 0 }}>
-                    {SPOTIFY_CLIENT_ID
-                      ? 'Vibe data unavailable for this track'
-                      : 'Add VITE_SPOTIFY_CLIENT_ID to enable vibe analysis'}
-                  </p>
+                  <p style={{ margin: 0 }}>Vibe data unavailable for this track</p>
                 </div>
               )}
             </div>
